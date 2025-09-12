@@ -46,6 +46,7 @@ const PharmacyPayment = () => {
   const totalSavings = location.state?.totalSavings || 0;
   const itemsCount = location.state?.itemsCount || 0;
   const appliedPromo = location.state?.appliedPromo || null;
+  const deliveryAddressFromCart = location.state?.deliveryAddress || null; // Add this line
 
   // Payment methods
   const paymentMethods = [
@@ -105,7 +106,15 @@ const PharmacyPayment = () => {
         phone: userData.phone || userData.phoneNumber || ''
       }));
     }
-  }, [cartItems, navigate, userData]);
+    
+    // If delivery address was passed from cart, use it
+    if (deliveryAddressFromCart) {
+      setDeliveryAddress(prev => ({
+        ...prev,
+        street: deliveryAddressFromCart
+      }));
+    }
+  }, [cartItems, navigate, userData, deliveryAddressFromCart]);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -479,6 +488,8 @@ const PharmacyPayment = () => {
                   <p className="text-sm text-gray-600 mt-1">
                     {deliveryAddress.street ? (
                       `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.pincode}`
+                    ) : deliveryAddressFromCart ? (
+                      deliveryAddressFromCart
                     ) : (
                       'Please add delivery address'
                     )}
