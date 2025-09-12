@@ -1,9 +1,10 @@
 // Medicine Order Component
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
+import toast from 'react-hot-toast';
 import { 
   Pill, 
   Search, 
@@ -28,6 +29,7 @@ import {
 const MedicineOrder = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('browse');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -204,6 +206,24 @@ const MedicineOrder = () => {
     }
   }, [userData]);
 
+  // Check for navigation state to determine active tab
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+    
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('medicineCart');
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
+  }, [location.state]);
+
+  // Save cart to localStorage whenever cart changes
+  useEffect(() => {
+    localStorage.setItem('medicineCart', JSON.stringify(cart));
+  }, [cart]);
+
   const loadMedicineOrders = async () => {
     try {
       const result = await firestoreService.getMedicineOrders(userData.uid);
@@ -232,19 +252,45 @@ const MedicineOrder = () => {
     setCart(prev => {
       const existing = prev.find(item => item.id === medicine.id);
       if (existing) {
+        const newQuantity = existing.quantity + 1;
+        if (newQuantity > medicine.stockCount) {
+          toast.error(`Only ${medicine.stockCount} items available in stock`);
+          return prev;
+        }
+        
+        toast.success(`Updated ${medicine.name} quantity to ${newQuantity}`, {
+          icon: '🛒',
+          duration: 2000
+        });
+        
         return prev.map(item =>
           item.id === medicine.id 
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: newQuantity }
             : item
         );
       }
+      
+      toast.success(`${medicine.name} added to cart!`, {
+        icon: '✅',
+        duration: 2000
+      });
+      
       return [...prev, { ...medicine, quantity: 1 }];
     });
   };
 
   const updateQuantity = (medicineId, newQuantity) => {
     if (newQuantity === 0) {
-      setCart(prev => prev.filter(item => item.id !== medicineId));
+      setCart(prev => {
+        const removedItem = prev.find(item => item.id === medicineId);
+        if (removedItem) {
+          toast.success(`${removedItem.name} removed from cart`, {
+            icon: '🗑️',
+            duration: 1500
+          });
+        }
+        return prev.filter(item => item.id !== medicineId);
+      });
     } else {
       setCart(prev => prev.map(item =>
         item.id === medicineId 
@@ -337,6 +383,10 @@ const MedicineOrder = () => {
           </button>
         </div>
       </div>
+      {/* Tabs Navigation */}
+      <div className="bg-white shadow-sm border-b mb-4 -mx-4">
+        <div className="px-4">
+          <div className="flex space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('browse')}
               className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
@@ -436,7 +486,8 @@ const MedicineOrder = () => {
             {/* Medicines Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredMedicines.map(medicine => (
-                <div key={medicine.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
+                <div key={medicine.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100 cursor-pointer"
+                     onClick={() => navigate(`/medicine/${medicine.id}`)}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
@@ -498,9 +549,9 @@ const MedicineOrder = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => showMedicineDetails(medicine)}
+                      onClick={() => navigate(`/medicine/${medicine.id}`)}
                       className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-1 text-sm"
                     >
                       <Eye className="w-4 h-4" />
@@ -730,44 +781,90 @@ const MedicineOrder = () => {
             {orders.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No orders yet</p>
+                <p className="text-gray-500 mb-4">No orders yet</p>
+                <button
+                  onClick={() => setActiveTab('browse')}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Start Shopping
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
                 {orders.map(order => (
-                  <div key={order.id} className="bg-white rounded-lg shadow p-6">
+                  <div key={order.id} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">
-                          Order #{order.orderNumber}
+                          Order #{order.orderId || order.id}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Placed on {new Date(order.orderDate).toLocaleDateString()}
+                          Placed on {new Date(order.orderDate || order.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                         order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                         order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'confirmed' ? 'bg-orange-100 text-orange-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {order.status}
+                        {order.status || 'pending'}
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                       <div>
                         <p className="text-gray-500">Items</p>
-                        <p className="font-medium">{order.items} items</p>
+                        <p className="font-medium">{order.itemsCount || order.items?.length || 0} items</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Total Amount</p>
-                        <p className="font-medium">${order.totalAmount}</p>
+                        <p className="font-medium">₹{order.totalAmount?.toFixed(2) || '0.00'}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Delivery Date</p>
                         <p className="font-medium">
-                          {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'TBD'}
+                          {order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleDateString() : 'TBD'}
                         </p>
+                      </div>
+                    </div>
+                    
+                    {/* Order Items Preview */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="border-t border-gray-200 pt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Items Ordered:</p>
+                        <div className="space-y-2">
+                          {order.items.slice(0, 3).map((item, index) => (
+                            <div key={index} className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">
+                                {item.name} × {item.quantity}
+                              </span>
+                              <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                          ))}
+                          {order.items.length > 3 && (
+                            <p className="text-xs text-gray-500">+{order.items.length - 3} more items</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Order Actions */}
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <div className="flex space-x-3">
+                        <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                          View Details
+                        </button>
+                        {order.status === 'confirmed' && (
+                          <button className="flex-1 bg-blue-100 text-blue-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">
+                            Track Order
+                          </button>
+                        )}
+                        {order.status === 'delivered' && (
+                          <button className="flex-1 bg-green-100 text-green-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors">
+                            Rate & Review
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -777,7 +874,195 @@ const MedicineOrder = () => {
           </div>
         )}
       </div>
-    </div>
+      
+      {/* Medicine Details Modal */}
+      {showDetailsModal && selectedMedicine && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedMedicine.name}</h2>
+                  <p className="text-sm text-gray-600">{selectedMedicine.genericName}</p>
+                </div>
+                <button
+                  onClick={closeMedicineDetails}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Medicine Overview */}
+              <div className="mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Strength</p>
+                    <p className="font-semibold text-gray-900">{selectedMedicine.strength}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Form</p>
+                    <p className="font-semibold text-gray-900">{selectedMedicine.form}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Manufacturer</p>
+                    <p className="font-semibold text-gray-900">{selectedMedicine.manufacturer}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-600">Category</p>
+                    <p className="font-semibold text-gray-900">{selectedMedicine.category}</p>
+                  </div>
+                </div>
+                
+                {/* Price and Rating */}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl font-bold text-green-600">₹{selectedMedicine.price}</span>
+                      {selectedMedicine.originalPrice > selectedMedicine.price && (
+                        <span className="text-lg text-gray-400 line-through">₹{selectedMedicine.originalPrice}</span>
+                      )}
+                      {selectedMedicine.discount > 0 && (
+                        <span className="bg-green-100 text-green-800 text-sm px-2 py-1 rounded-full font-medium">
+                          {selectedMedicine.discount}% OFF
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">₹{selectedMedicine.price} per {selectedMedicine.form.toLowerCase()}</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="flex items-center space-x-1 mb-1">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            className={`w-4 h-4 ${
+                              i < Math.floor(selectedMedicine.rating) 
+                                ? 'text-yellow-400 fill-current' 
+                                : 'text-gray-300'
+                            }`} 
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{selectedMedicine.rating}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">{selectedMedicine.reviews} reviews</p>
+                  </div>
+                </div>
+                
+                {/* Stock Status */}
+                <div className="flex items-center space-x-3 mb-4">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    selectedMedicine.inStock 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedMedicine.inStock ? `In Stock (${selectedMedicine.stockCount} available)` : 'Out of Stock'}
+                  </span>
+                  {selectedMedicine.requiresPrescription && (
+                    <span className="bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full font-medium">
+                      Prescription Required
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Description */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                <p className="text-gray-700 leading-relaxed">{selectedMedicine.description}</p>
+              </div>
+              
+              {/* Uses */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Uses</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedMedicine.uses.map((use, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-700">{use}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Dosage */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dosage & Administration</h3>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">{selectedMedicine.dosage}</p>
+                </div>
+              </div>
+              
+              {/* Side Effects */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Side Effects</h3>
+                <div className="space-y-2">
+                  {selectedMedicine.sideEffects.map((effect, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
+                      <span className="text-sm text-gray-700">{effect}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Warnings */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Warnings & Precautions</h3>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-2">
+                    <Shield className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800">{selectedMedicine.warnings}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Expiry Date */}
+              <div className="mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm text-gray-600">Expiry Date:</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(selectedMedicine.expiryDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Add to Cart Section */}
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 -mx-6 px-6 pb-6">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={closeMedicineDetails}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      addToCart(selectedMedicine);
+                      closeMedicineDetails();
+                    }}
+                    disabled={!selectedMedicine.inStock}
+                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span>Add to Cart</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageLayout>
   );
 };
 

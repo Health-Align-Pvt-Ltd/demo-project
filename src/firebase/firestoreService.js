@@ -107,7 +107,8 @@ export const firestoreService = {
       const docRef = await addDoc(collection(db, 'medicineOrders'), {
         ...orderData,
         createdAt: new Date().toISOString(),
-        status: 'pending'
+        updatedAt: new Date().toISOString(),
+        status: orderData.status || 'confirmed'
       });
       return { success: true, id: docRef.id };
     } catch (error) {
@@ -120,7 +121,8 @@ export const firestoreService = {
     try {
       const q = query(
         collection(db, 'medicineOrders'),
-        where('userId', '==', userId)
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
       const orders = [];
@@ -128,12 +130,132 @@ export const firestoreService = {
         orders.push({ id: doc.id, ...doc.data() });
       });
       
-      // Sort by creation date on client side
-      orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
       return { success: true, data: orders };
     } catch (error) {
       console.error('Error getting medicine orders:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async updateMedicineOrder(orderId, updates) {
+    try {
+      await updateDoc(doc(db, 'medicineOrders', orderId), {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating medicine order:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getMedicineOrderById(orderId) {
+    try {
+      const docRef = doc(db, 'medicineOrders', orderId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+      } else {
+        return { success: false, error: 'Order not found' };
+      }
+    } catch (error) {
+      console.error('Error getting medicine order by ID:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Medicine order with payment processing
+  async createMedicineOrderWithPayment(orderData, paymentData) {
+    try {
+      // Create medicine order
+      const orderResult = await this.createMedicineOrder(orderData);
+      if (!orderResult.success) {
+        throw new Error('Failed to create medicine order');
+      }
+
+      // Create payment transaction
+      const transactionResult = await this.createTransaction({
+        ...paymentData,
+        orderId: orderResult.id,
+        userId: orderData.userId,
+        type: 'medicine_order',
+        status: 'completed'
+      });
+      
+      if (!transactionResult.success) {
+        console.warn('Failed to create transaction record, but order created');
+      }
+
+      return { 
+        success: true, 
+        orderId: orderResult.id,
+        transactionId: transactionResult.id
+      };
+    } catch (error) {
+      console.error('Error in medicine order with payment:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Medicine inventory management
+  async updateMedicineStock(medicineId, quantity) {
+    try {
+      const medicineRef = doc(db, 'medicines', medicineId);
+      const medicineSnap = await getDoc(medicineRef);
+      
+      if (medicineSnap.exists()) {
+        const currentStock = medicineSnap.data().stockCount || 0;
+        const newStock = Math.max(0, currentStock - quantity);
+        
+        await updateDoc(medicineRef, {
+          stockCount: newStock,
+          inStock: newStock > 0,
+          updatedAt: new Date().toISOString()
+        });
+        
+        return { success: true, newStock };
+      } else {
+        return { success: false, error: 'Medicine not found' };
+      }
+    } catch (error) {
+      console.error('Error updating medicine stock:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Prescription management
+  async savePrescription(prescriptionData) {
+    try {
+      const docRef = await addDoc(collection(db, 'prescriptions'), {
+        ...prescriptionData,
+        createdAt: new Date().toISOString(),
+        status: 'pending_verification'
+      });
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('Error saving prescription:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getUserPrescriptions(userId) {
+    try {
+      const q = query(
+        collection(db, 'prescriptions'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      const prescriptions = [];
+      querySnapshot.forEach((doc) => {
+        prescriptions.push({ id: doc.id, ...doc.data() });
+      });
+      
+      return { success: true, data: prescriptions };
+    } catch (error) {
+      console.error('Error getting prescriptions:', error);
       return { success: false, error: error.message, data: [] };
     }
   },

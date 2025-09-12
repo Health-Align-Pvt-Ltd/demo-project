@@ -18,6 +18,8 @@ import AmbulancePaymentGateway from './components/ambulance/AmbulancePaymentGate
 import AmbulancePaymentSuccess from './components/ambulance/AmbulancePaymentSuccess'
 import BloodRequest from './components/blood/BloodRequest'
 import MedicineOrder from './components/medicine/MedicineOrder'
+import MedicinePayment from './components/medicine/MedicinePayment'
+import MedicineDetails from './components/medicine/MedicineDetails'
 import Profile from './components/profile/Profile'
 import PWAInstallPrompt from './components/pwa/PWAInstallPrompt'
 
@@ -146,6 +148,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MedicineOrder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/medicine/:medicineId" 
+            element={
+              <ProtectedRoute>
+                <MedicineDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/medicine-payment" 
+            element={
+              <ProtectedRoute>
+                <MedicinePayment />
               </ProtectedRoute>
             } 
           />
