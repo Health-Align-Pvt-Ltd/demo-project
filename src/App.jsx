@@ -1,17 +1,148 @@
-import { useState } from 'react'
-import { Route, Routes } from 'react-router-dom'
-import CommonRoutes from './modules/commonroutes'
-import TestScreen from './test'
+import React from 'react'
+import { Route, Routes, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/auth/ProtectedRoute'
+import Login from './components/auth/Login'
+import Register from './components/auth/Register'
+import Dashboard from './components/dashboard/Dashboard'
+import DoctorConsultation from './components/consultation/DoctorConsultation'
+import DoctorDetails from './components/consultation/DoctorDetails'
+import PaymentGateway from './components/payment/PaymentGateway'
+import PaymentSuccess from './components/payment/PaymentSuccess'
+import Wallet from './components/wallet/Wallet'
+import AmbulanceBooking from './components/ambulance/AmbulanceBooking'
+import BloodRequest from './components/blood/BloodRequest'
+import MedicineOrder from './components/medicine/MedicineOrder'
+import Profile from './components/profile/Profile'
+import PWAInstallPrompt from './components/pwa/PWAInstallPrompt'
 
 function App() {
-
   return (
-    <>
-      <Routes>
-        <Route path='/' element={<TestScreen />} />
-        <Route path='/home/*' element={<CommonRoutes />} />
-      </Routes>
-    </>
+    <AuthProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          {/* Public Routes */}
+          <Route 
+            path="/login" 
+            element={
+              <ProtectedRoute requireAuth={false}>
+                <Login />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <ProtectedRoute requireAuth={false}>
+                <Register />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Protected Routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/consultation" 
+            element={
+              <ProtectedRoute>
+                <DoctorConsultation />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/doctor/:doctorId" 
+            element={
+              <ProtectedRoute>
+                <DoctorDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/payment" 
+            element={
+              <ProtectedRoute>
+                <PaymentGateway />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/payment-success" 
+            element={
+              <ProtectedRoute>
+                <PaymentSuccess />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/wallet" 
+            element={
+              <ProtectedRoute>
+                <Wallet />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ambulance" 
+            element={
+              <ProtectedRoute>
+                <AmbulanceBooking />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/blood-request" 
+            element={
+              <ProtectedRoute>
+                <BloodRequest />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/medicine" 
+            element={
+              <ProtectedRoute>
+                <MedicineOrder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+        
+        {/* PWA Install Prompt */}
+        <PWAInstallPrompt />
+        
+        {/* Toast Notifications */}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
+      </div>
+    </AuthProvider>
   )
 }
 
