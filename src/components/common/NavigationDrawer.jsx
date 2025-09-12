@@ -72,11 +72,18 @@ const NavigationDrawer = ({ isOpen = false, onToggle }) => {
       description: 'Emergency blood donation'
     },
     { 
-      id: 'medicine', 
-      label: 'Medicine Order', 
+      id: 'pharmacy', 
+      label: 'Pharmacy', 
+      icon: Pill, 
+      path: '/pharmacy',
+      description: 'Order medicines & healthcare products'
+    },
+    { 
+      id: 'medicine-orders', 
+      label: 'Medicine Orders', 
       icon: Pill, 
       path: '/medicine',
-      description: 'Order prescription medicines'
+      description: 'Manage prescription orders'
     }
   ];
 

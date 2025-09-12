@@ -398,7 +398,7 @@ const MedicineOrder = () => {
               Browse Medicines
             </button>
             <button
-              onClick={() => setActiveTab('prescription')}
+              onClick={() => navigate('/upload-prescription')}
               className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'prescription'
                   ? 'border-green-500 text-green-600'

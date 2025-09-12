@@ -20,6 +20,14 @@ import BloodRequest from './components/blood/BloodRequest'
 import MedicineOrder from './components/medicine/MedicineOrder'
 import MedicinePayment from './components/medicine/MedicinePayment'
 import MedicineDetails from './components/medicine/MedicineDetails'
+import Pharmacy from './components/pharmacy/Pharmacy'
+import PharmacyMedicineDetails from './components/pharmacy/PharmacyMedicineDetails'
+import UploadPrescription from './components/pharmacy/UploadPrescription'
+import PrescriptionConfirmation from './components/pharmacy/PrescriptionConfirmation'
+import MedicineCart from './components/pharmacy/MedicineCart'
+import MedicineCategory from './components/pharmacy/MedicineCategory'
+import MedicineSearch from './components/pharmacy/MedicineSearch'
+import MyOrders from './components/pharmacy/MyOrders'
 import Profile from './components/profile/Profile'
 import PWAInstallPrompt from './components/pwa/PWAInstallPrompt'
 
@@ -144,6 +152,54 @@ function App() {
             } 
           />
           <Route 
+            path="/pharmacy" 
+            element={
+              <ProtectedRoute>
+                <Pharmacy />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/cart" 
+            element={
+              <ProtectedRoute>
+                <MedicineCart />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/category/:categoryId" 
+            element={
+              <ProtectedRoute>
+                <MedicineCategory />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/search" 
+            element={
+              <ProtectedRoute>
+                <MedicineSearch />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/orders" 
+            element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/:medicineId" 
+            element={
+              <ProtectedRoute>
+                <PharmacyMedicineDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/medicine" 
             element={
               <ProtectedRoute>
@@ -164,6 +220,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MedicinePayment />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/upload-prescription" 
+            element={
+              <ProtectedRoute>
+                <UploadPrescription />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/prescription-confirmation" 
+            element={
+              <ProtectedRoute>
+                <PrescriptionConfirmation />
               </ProtectedRoute>
             } 
           />

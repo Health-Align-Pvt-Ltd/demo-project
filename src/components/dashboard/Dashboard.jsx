@@ -28,7 +28,8 @@ import {
   MapPin,
   Star,
   Zap,
-  Wallet
+  Wallet,
+  FileText
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -75,17 +76,17 @@ const Dashboard = () => {
       subtitle: 'Order medicines',
       icon: Pill,
       gradient: 'from-green-400 to-green-600',
-      path: '/medicine',
+      path: '/pharmacy',
       badge: 'Fast'
     }
   ];
 
   const services = [
     { title: 'Lab Tests', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-100', path: '/lab-tests' },
+    { title: 'Upload Prescription', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', path: '/upload-prescription' },
     { title: 'My Wallet', icon: Wallet, color: 'text-green-600', bg: 'bg-green-100', path: '/wallet' },
     { title: 'Health Records', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-100', path: '/health-records' },
     { title: 'Insurance', icon: Shield, color: 'text-orange-600', bg: 'bg-orange-100', path: '/insurance' },
-    { title: 'Wellness', icon: Heart, color: 'text-rose-600', bg: 'bg-rose-100', path: '/wellness' },
     { title: 'Emergency', icon: Phone, color: 'text-red-600', bg: 'bg-red-100', path: '/emergency' }
   ];
 
