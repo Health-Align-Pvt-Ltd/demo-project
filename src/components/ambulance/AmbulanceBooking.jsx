@@ -1,12 +1,13 @@
 // Enhanced Ambulance Booking Component with OpenStreetMap
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { firestoreService } from '../../firebase/firestoreService';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import Cookies from 'js-cookie';
 import PageLayout from '../common/PageLayout';
+import MapLocationPicker from '../common/MapLocationPicker';
 import { 
   ArrowLeft, 
   Truck, 
@@ -74,9 +75,22 @@ function MapUpdater({ center, zoom }) {
   return null;
 }
 
+// Map click handler component
+function MapClickHandler({ onMapClick }) {
+  const map = useMap();
+  useEffect(() => {
+    map.on('click', onMapClick);
+    return () => {
+      map.off('click', onMapClick);
+    };
+  }, [map, onMapClick]);
+  return null;
+}
+
 const AmbulanceBooking = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('emergency');
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -100,7 +114,14 @@ const AmbulanceBooking = () => {
   const [ambulanceRoute, setAmbulanceRoute] = useState([]);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingInterval, setTrackingInterval] = useState(null);
-  const [estimatedArrival, setEstimatedArrival] = useState(null);
+  const [selectedHospital, setSelectedHospital] = useState(null);
+  const [hospitalSearchQuery, setHospitalSearchQuery] = useState('');
+  const [showHospitalDropdown, setShowHospitalDropdown] = useState(false);
+  const [patientLocationMarker, setPatientLocationMarker] = useState(null);
+  const [isManualLocationMode, setIsManualLocationMode] = useState(false);
+  const [calculatedDistance, setCalculatedDistance] = useState(0);
+  const [calculatedFare, setCalculatedFare] = useState(500);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const urgencyLevels = [
     { value: 'critical', label: 'Critical - Life Threatening', color: 'text-red-600', bgColor: 'bg-red-100' },
@@ -108,6 +129,33 @@ const AmbulanceBooking = () => {
     { value: 'medium', label: 'Medium - Non-Emergency', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
     { value: 'low', label: 'Low - Routine Transport', color: 'text-green-600', bgColor: 'bg-green-100' }
   ];
+
+  const mockHospitals = [
+    { id: 1, name: 'AIIMS Delhi', type: 'Hospital', lat: 28.5672, lng: 77.2100, address: 'Ansari Nagar, New Delhi' },
+    { id: 2, name: 'Safdarjung Hospital', type: 'Hospital', lat: 28.5740, lng: 77.2060, address: 'Safdarjung, New Delhi' },
+    { id: 3, name: 'Apollo Hospital', type: 'Hospital', lat: 28.5355, lng: 77.2490, address: 'Sarita Vihar, New Delhi' },
+    { id: 4, name: 'Max Hospital Saket', type: 'Hospital', lat: 28.5244, lng: 77.2066, address: 'Saket, New Delhi' },
+    { id: 5, name: 'Fortis Hospital', type: 'Hospital', lat: 28.5562, lng: 77.2410, address: 'Shalimar Bagh, New Delhi' },
+    { id: 6, name: 'Mercy Nursing Home', type: 'Nursing Home', lat: 28.6280, lng: 77.2197, address: 'Connaught Place, New Delhi' },
+    { id: 7, name: 'Care Nursing Home', type: 'Nursing Home', lat: 28.6450, lng: 77.2160, address: 'Karol Bagh, New Delhi' },
+    { id: 8, name: 'City Hospital', type: 'Hospital', lat: 28.6890, lng: 77.2194, address: 'Civil Lines, New Delhi' },
+    { id: 9, name: 'Metro Hospital', type: 'Hospital', lat: 28.4595, lng: 77.0266, address: 'Gurgaon, Haryana' },
+    { id: 10, name: 'Sunrise Nursing Home', type: 'Nursing Home', lat: 28.6692, lng: 77.4538, address: 'Noida, UP' }
+  ];
+
+  const calculateFareFromDistance = (distanceKm) => {
+    const baseFare = 500; // Minimum fare ₹500
+    if (distanceKm <= 0) return baseFare;
+    
+    // ₹18 per km after base fare
+    const additionalFare = distanceKm * 18;
+    return Math.max(baseFare, baseFare + additionalFare);
+  };
+
+  const filteredHospitals = mockHospitals.filter(hospital =>
+    hospital.name.toLowerCase().includes(hospitalSearchQuery.toLowerCase()) ||
+    hospital.type.toLowerCase().includes(hospitalSearchQuery.toLowerCase())
+  );
 
   const commonConditions = [
     'Heart Attack',
@@ -120,7 +168,80 @@ const AmbulanceBooking = () => {
     'Other Emergency'
   ];
 
-  const nearbyAmbulances = [
+  const handleMapClick = (e) => {
+    if (isManualLocationMode) {
+      const clickedLocation = {
+        lat: e.latlng.lat,
+        lng: e.latlng.lng
+      };
+      setPatientLocationMarker(clickedLocation);
+      setUserLocation(clickedLocation);
+      reverseGeocode(clickedLocation.lat, clickedLocation.lng);
+      
+      // Calculate distance and fare if hospital is selected
+      if (selectedHospital) {
+        const distance = calculateDistance(
+          clickedLocation.lat, 
+          clickedLocation.lng, 
+          selectedHospital.lat, 
+          selectedHospital.lng
+        );
+        setCalculatedDistance(distance);
+        setCalculatedFare(calculateFareFromDistance(distance));
+      }
+    }
+  };
+
+  const handleMapLocationSelect = (locationData) => {
+    setPatientLocationMarker({
+      lat: locationData.lat,
+      lng: locationData.lng
+    });
+    setUserLocation({
+      lat: locationData.lat,
+      lng: locationData.lng
+    });
+    setEmergencyRequest(prev => ({
+      ...prev,
+      pickupLocation: locationData.address
+    }));
+    
+    // Calculate distance and fare if hospital is selected
+    if (selectedHospital) {
+      const distance = calculateDistance(
+        locationData.lat, 
+        locationData.lng, 
+        selectedHospital.lat, 
+        selectedHospital.lng
+      );
+      setCalculatedDistance(distance);
+      setCalculatedFare(calculateFareFromDistance(distance));
+    }
+  };
+
+  const selectHospital = (hospital) => {
+    setSelectedHospital(hospital);
+    setEmergencyRequest(prev => ({
+      ...prev,
+      hospitalPreference: hospital.name
+    }));
+    setShowHospitalDropdown(false);
+    setHospitalSearchQuery(hospital.name);
+    
+    // Calculate distance and fare if patient location is available
+    const patientLoc = patientLocationMarker || userLocation;
+    if (patientLoc) {
+      const distance = calculateDistance(
+        patientLoc.lat, 
+        patientLoc.lng, 
+        hospital.lat, 
+        hospital.lng
+      );
+      setCalculatedDistance(distance);
+      setCalculatedFare(calculateFareFromDistance(distance));
+    }
+  };
+    const nearbyAmbulances = [
     { id: '1', driver: 'John Smith', vehicle: 'AMB-001', eta: '5 mins', distance: '1.2 km', rating: 4.8, lat: 28.6149, lng: 77.2100 },
     { id: '2', driver: 'Maria Garcia', vehicle: 'AMB-002', eta: '8 mins', distance: '2.1 km', rating: 4.9, lat: 28.6129, lng: 77.2080 },
     { id: '3', driver: 'David Johnson', vehicle: 'AMB-003', eta: '12 mins', distance: '2.8 km', rating: 4.7, lat: 28.6159, lng: 77.2110 }
@@ -130,7 +251,24 @@ const AmbulanceBooking = () => {
     loadPatientDataFromCookies();
     getCurrentLocation();
     loadAmbulanceRequests();
-  }, []);
+    
+    // Check if we should switch to a specific tab from navigation state
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+    
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.hospital-search-container')) {
+        setShowHospitalDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [location.state]);
 
   useEffect(() => {
     if (userLocation) {
@@ -329,13 +467,28 @@ const AmbulanceBooking = () => {
       if (result.success) {
         // Save patient data to cookies
         savePatientDataToCookies(emergencyRequest);
-        alert('Emergency ambulance requested successfully! Help is on the way.');
         
-        // Start live tracking automatically
-        startLiveTracking('1');
+        // Calculate distance for pricing
+        const finalPatientLocation = patientLocationMarker || userLocation;
+        const finalDistance = selectedHospital && finalPatientLocation ? 
+          calculateDistance(finalPatientLocation.lat, finalPatientLocation.lng, selectedHospital.lat, selectedHospital.lng) : 
+          calculatedDistance || 5; // Default 5km if no selection
         
-        setActiveTab('tracking');
-        loadAmbulanceRequests();
+        const finalFare = calculateFareFromDistance(finalDistance);
+        
+        // Redirect to ambulance payment gateway
+        navigate('/ambulance-payment', {
+          state: {
+            ambulanceBookingDetails: {
+              ...requestData,
+              bookingId: result.id,
+              estimatedDistance: finalDistance,
+              selectedHospital: selectedHospital,
+              estimatedFare: finalFare,
+              patientLocation: finalPatientLocation
+            }
+          }
+        });
       } else {
         alert('Failed to request ambulance. Please try again.');
       }
@@ -350,11 +503,33 @@ const AmbulanceBooking = () => {
     window.open('tel:102'); // Indian ambulance number
   };
 
-  const selectHospital = (hospital) => {
+  const selectHospitalFromNearby = (hospital) => {
     setEmergencyRequest(prev => ({
       ...prev,
       hospitalPreference: hospital.name
     }));
+    setSelectedHospital({
+      id: hospital.id,
+      name: hospital.name,
+      lat: hospital.lat,
+      lng: hospital.lng,
+      type: 'Hospital',
+      address: hospital.address
+    });
+    setHospitalSearchQuery(hospital.name);
+    
+    // Calculate distance and fare
+    const patientLoc = patientLocationMarker || userLocation;
+    if (patientLoc) {
+      const distance = calculateDistance(
+        patientLoc.lat, 
+        patientLoc.lng, 
+        hospital.lat, 
+        hospital.lng
+      );
+      setCalculatedDistance(distance);
+      setCalculatedFare(calculateFareFromDistance(distance));
+    }
   };
 
   // Live ambulance tracking functions
@@ -524,16 +699,6 @@ const AmbulanceBooking = () => {
             >
               Nearby Hospitals
             </button>
-            <button
-              onClick={() => setActiveTab('tracking')}
-              className={`py-3 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'tracking'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Track Ambulance
-            </button>
           </div>
         </div>
       </div>
@@ -692,6 +857,46 @@ const AmbulanceBooking = () => {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Location Information</h3>
               <div className="space-y-3">
+                {/* Patient Location Mode Toggle */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    Patient Location
+                  </label>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManualLocationMode(false);
+                        setPatientLocationMarker(null);
+                        getCurrentLocation();
+                      }}
+                      className={`px-3 py-2 text-xs rounded-lg font-medium ${
+                        !isManualLocationMode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Auto Detect
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMapPicker(true)}
+                      className={`px-3 py-2 text-xs rounded-lg font-medium ${
+                        isManualLocationMode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Select on Map
+                    </button>
+                  </div>
+                  {isManualLocationMode && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Click on the map below to select patient location
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Pickup Location *
@@ -707,19 +912,63 @@ const AmbulanceBooking = () => {
                   />
                 </div>
 
-                <div>
+                {/* Hospital/Nursing Home Search */}
+                <div className="relative hospital-search-container">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Hospital Preference (Optional)
+                    Destination Hospital/Nursing Home *
                   </label>
-                  <input
-                    type="text"
-                    name="hospitalPreference"
-                    value={emergencyRequest.hospitalPreference}
-                    onChange={handleInputChange}
-                    placeholder="Select from nearby hospitals or enter preferred hospital"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Check 'Nearby Hospitals' tab to see available options</p>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={hospitalSearchQuery}
+                      onChange={(e) => {
+                        setHospitalSearchQuery(e.target.value);
+                        setShowHospitalDropdown(true);
+                      }}
+                      onFocus={() => setShowHospitalDropdown(true)}
+                      placeholder="Search hospitals or nursing homes..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      required
+                    />
+                    
+                    {/* Search Dropdown */}
+                    {showHospitalDropdown && filteredHospitals.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredHospitals.map((hospital) => (
+                          <button
+                            key={hospital.id}
+                            type="button"
+                            onClick={() => selectHospital(hospital)}
+                            className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{hospital.name}</p>
+                              <p className="text-xs text-blue-600">{hospital.type}</p>
+                              <p className="text-xs text-gray-500">{hospital.address}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {selectedHospital && (
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                      <p className="text-xs text-green-800">
+                        <strong>Selected:</strong> {selectedHospital.name} ({selectedHospital.type})
+                      </p>
+                      {calculatedDistance > 0 && (
+                        <div className="mt-1">
+                          <p className="text-xs text-green-700">
+                            <strong>Distance:</strong> {calculatedDistance.toFixed(1)} km
+                          </p>
+                          <p className="text-xs text-green-700">
+                            <strong>Estimated Fare:</strong> ₹{calculatedFare} (Base ₹500 + ₹18/km)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -779,14 +1028,59 @@ const AmbulanceBooking = () => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
                     <MapUpdater center={mapCenter} zoom={13} />
+                    <MapClickHandler onMapClick={handleMapClick} />
                     
-                    {/* User location marker */}
-                    <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
-                      <Popup>
-                        <strong>Your Location</strong><br />
-                        {emergencyRequest.pickupLocation || 'Current Position'}
-                      </Popup>
-                    </Marker>
+                    {/* Patient location marker */}
+                    {(patientLocationMarker || userLocation) && (
+                      <Marker 
+                        position={[
+                          (patientLocationMarker || userLocation).lat, 
+                          (patientLocationMarker || userLocation).lng
+                        ]} 
+                        icon={userIcon}
+                      >
+                        <Popup>
+                          <strong>Patient Location</strong><br />
+                          {isManualLocationMode ? 'Manually Selected' : 'Auto Detected'}<br />
+                          {emergencyRequest.pickupLocation || 'Current Position'}
+                        </Popup>
+                      </Marker>
+                    )}
+                    
+                    {/* Selected hospital marker */}
+                    {selectedHospital && (
+                      <Marker 
+                        position={[selectedHospital.lat, selectedHospital.lng]} 
+                        icon={hospitalIcon}
+                      >
+                        <Popup>
+                          <div className="text-sm">
+                            <strong>{selectedHospital.name}</strong><br />
+                            Type: {selectedHospital.type}<br />
+                            {calculatedDistance > 0 && (
+                              <>
+                                Distance: {calculatedDistance.toFixed(1)} km<br />
+                                Fare: ₹{calculatedFare}
+                              </>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+                    
+                    {/* Route line between patient and selected hospital */}
+                    {selectedHospital && (patientLocationMarker || userLocation) && (
+                      <Polyline
+                        positions={[
+                          [(patientLocationMarker || userLocation).lat, (patientLocationMarker || userLocation).lng],
+                          [selectedHospital.lat, selectedHospital.lng]
+                        ]}
+                        color="blue"
+                        weight={4}
+                        opacity={0.7}
+                        dashArray="10, 10"
+                      />
+                    )}
                     
                     {/* Hospital markers */}
                     {nearbyHospitals.map(hospital => (
@@ -801,7 +1095,7 @@ const AmbulanceBooking = () => {
                             Distance: {hospital.distance.toFixed(1)} km<br />
                             Phone: {hospital.phone}<br />
                             <button 
-                              onClick={() => selectHospital(hospital)}
+                              onClick={() => selectHospitalFromNearby(hospital)}
                               className="mt-2 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                             >
                               Select Hospital
@@ -866,7 +1160,7 @@ const AmbulanceBooking = () => {
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">{hospital.distance.toFixed(1)} km</p>
                         <button
-                          onClick={() => selectHospital(hospital)}
+                          onClick={() => selectHospitalFromNearby(hospital)}
                           className="mt-1 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                         >
                           Select
@@ -891,307 +1185,19 @@ const AmbulanceBooking = () => {
             </div>
           </div>
         )}
-
-        {/* Tracking Tab */}
-        {activeTab === 'tracking' && (
-          <div className="space-y-4">
-            {/* Live Tracking Map */}
-            {isTracking && activeAmbulance && userLocation && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900">Live Ambulance Tracking</h3>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-green-600 font-medium">Live</span>
-                  </div>
-                </div>
-                
-                <div className="h-64 rounded-lg overflow-hidden mb-4">
-                  <MapContainer
-                    center={[activeAmbulance.currentLocation.lat, activeAmbulance.currentLocation.lng]}
-                    zoom={15}
-                    scrollWheelZoom={true}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    
-                    {/* Route line */}
-                    {ambulanceRoute.length > 0 && (
-                      <Polyline
-                        positions={ambulanceRoute}
-                        color="blue"
-                        weight={4}
-                        opacity={0.7}
-                        dashArray="10, 10"
-                      />
-                    )}
-                    
-                    {/* User location marker */}
-                    <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
-                      <Popup>
-                        <strong>Your Location</strong><br />
-                        Pickup Point
-                      </Popup>
-                    </Marker>
-                    
-                    {/* Active ambulance marker */}
-                    <Marker 
-                      position={[activeAmbulance.currentLocation.lat, activeAmbulance.currentLocation.lng]} 
-                      icon={ambulanceIcon}
-                    >
-                      <Popup>
-                        <div className="text-sm">
-                          <strong>{activeAmbulance.vehicle}</strong><br />
-                          Driver: {activeAmbulance.driver}<br />
-                          Status: {activeAmbulance.status.replace('_', ' ')}<br />
-                          ETA: {activeAmbulance.eta}<br />
-                          Distance: {activeAmbulance.distance}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
-                </div>
-                
-                {/* Tracking Controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={() => isTracking ? stopLiveTracking() : startLiveTracking('1')}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                        isTracking 
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      }`}
-                    >
-                      {isTracking ? (
-                        <><PauseCircle className="w-4 h-4" /><span>Stop Tracking</span></>
-                      ) : (
-                        <><PlayCircle className="w-4 h-4" /><span>Start Tracking</span></>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        if (activeAmbulance) {
-                          setMapCenter([activeAmbulance.currentLocation.lat, activeAmbulance.currentLocation.lng]);
-                        }
-                      }}
-                      className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium"
-                    >
-                      <Navigation2 className="w-4 h-4" />
-                      <span>Center on Ambulance</span>
-                    </button>
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Last updated</p>
-                    <p className="text-sm font-medium">{new Date().toLocaleTimeString()}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Active Request Status */}
-            {activeAmbulance ? (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900">Active Request</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    activeAmbulance.status === 'en_route' ? 'bg-blue-100 text-blue-800' :
-                    activeAmbulance.status === 'arrived' ? 'bg-green-100 text-green-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {activeAmbulance.status.replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Truck className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-xs text-gray-500">Ambulance</p>
-                    <p className="text-sm font-semibold">{activeAmbulance.vehicle}</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Clock className="w-6 h-6 text-green-600" />
-                    </div>
-                    <p className="text-xs text-gray-500">ETA</p>
-                    <p className="text-sm font-semibold">{activeAmbulance.eta}</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Navigation className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <p className="text-xs text-gray-500">Distance</p>
-                    <p className="text-sm font-semibold">{activeAmbulance.distance}</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Route className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <p className="text-xs text-gray-500">Status</p>
-                    <p className="text-sm font-semibold">{isTracking ? 'Tracking' : 'Stopped'}</p>
-                  </div>
-                </div>
-                
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>Driver:</strong> {activeAmbulance.driver}
-                    </p>
-                    <p className="text-sm text-blue-800">
-                      <strong>Contact:</strong> +91-98765-43210
-                    </p>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      <strong>Started:</strong> {new Date(activeAmbulance.startTime).toLocaleTimeString()}
-                    </p>
-                    <p className="text-sm text-green-800">
-                      <strong>Estimated Arrival:</strong> {estimatedArrival ? estimatedArrival.toLocaleTimeString() : 'Calculating...'}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Emergency Actions */}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
-                    <Phone className="w-4 h-4" />
-                    <span>Call Driver</span>
-                  </button>
-                  
-                  <button className="flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>Update Emergency</span>
-                  </button>
-                  
-                  <button className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Cancel Request</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm mb-2">No active ambulance requests</p>
-                <p className="text-gray-400 text-xs mb-4">Request an ambulance to start live tracking</p>
-                <button
-                  onClick={() => setActiveTab('emergency')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                >
-                  Request Ambulance
-                </button>
-                
-                {/* Demo button for testing */}
-                <div className="mt-4">
-                  <button
-                    onClick={() => startLiveTracking('1')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                  >
-                    Start Demo Tracking
-                  </button>
-                </div>
-              </div>
-            )}"
-
-            {/* Nearby Ambulances */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Nearby Ambulances</h3>
-              <div className="space-y-3">
-                {nearbyAmbulances.map(ambulance => (
-                  <div key={ambulance.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Truck className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{ambulance.vehicle}</p>
-                        <p className="text-xs text-gray-500">{ambulance.driver}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{ambulance.eta}</p>
-                      <p className="text-xs text-gray-500">{ambulance.distance}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Request History */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Request History</h3>
-              {ambulanceRequests.length === 0 ? (
-                <div className="text-center py-6">
-                  <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">No previous requests</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {ambulanceRequests.map(request => (
-                    <div key={request.id} className="p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900">{request.patientName}</h4>
-                          <p className="text-xs text-gray-500">
-                            {new Date(request.requestTime || request.createdAt).toLocaleDateString()} at {new Date(request.requestTime || request.createdAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center">
-                          {request.status === 'completed' ? (
-                            <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-red-600 mr-1" />
-                          )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            request.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {request.status}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-gray-500">Condition</p>
-                          <p className="font-medium">{request.condition}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Urgency</p>
-                          <p className={`font-medium ${
-                            request.urgency === 'critical' ? 'text-red-600' :
-                            request.urgency === 'high' ? 'text-orange-600' :
-                            request.urgency === 'medium' ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {request.urgency}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Ambulance</p>
-                          <p className="font-medium">{request.ambulanceId || 'Pending'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+      
+      {/* Map Location Picker Modal */}
+      <MapLocationPicker
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onLocationSelect={handleMapLocationSelect}
+        initialLocation={(() => {
+          const location = patientLocationMarker || userLocation;
+          return location ? { lat: location.lat, lng: location.lng } : null;
+        })()}
+        title="Select Patient Pickup Location"
+      />
     </PageLayout>
   );
 };

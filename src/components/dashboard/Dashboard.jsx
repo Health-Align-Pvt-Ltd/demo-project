@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import BottomNavBar from '../common/BottomNavBar';
+import PageLayout from '../common/PageLayout';
 import { 
   Stethoscope, 
   Truck, 
@@ -113,85 +113,107 @@ const Dashboard = () => {
     }
   ];
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const handleNotificationClick = () => {
+    // Handle notification click - could open notification panel
+    console.log('Notifications clicked');
   };
 
+  const handleSearchClick = () => {
+    // Handle search click - could open search overlay
+    console.log('Search clicked');
+  };
+
+  const customRightActions = (
+    <>
+      <button 
+        onClick={handleSearchClick}
+        className="p-2 rounded-full hover:bg-white/20 transition-colors"
+      >
+        <Search className="w-5 h-5 text-white" />
+      </button>
+      <button 
+        onClick={handleNotificationClick}
+        className="relative p-2 rounded-full hover:bg-white/20 transition-colors"
+      >
+        <Bell className="w-5 h-5 text-white" />
+        {notifications.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+            {notifications.length}
+          </span>
+        )}
+      </button>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 pt-12 pb-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-white text-base font-semibold">
-                Hi, {userData?.name?.split(' ')[0] || user?.displayName?.split(' ')[0] || 'User'}!
-              </h1>
-              <p className="text-blue-100 text-xs">Stay healthy, stay happy</p>
-            </div>
+    <PageLayout 
+      title={`Hi, ${userData?.name?.split(' ')[0] || user?.displayName?.split(' ')[0] || 'User'}!`}
+      subtitle="Stay healthy, stay happy"
+      showBack={false}
+      showDrawer={true}
+      backgroundColor="bg-gradient-to-r from-blue-600 to-blue-700"
+      textColor="text-white"
+      rightActions={customRightActions}
+      className="bg-gray-50"
+    >
+      {/* Welcome Message */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-6 border border-blue-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <User className="w-6 h-6 text-blue-600" />
           </div>
-          <div className="flex items-center space-x-2">
-            <button className="relative p-2 bg-white/20 rounded-full">
-              <Bell className="w-5 h-5 text-white" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {notifications.length}
-                </span>
-              )}
-            </button>
-            <button className="p-2 bg-white/20 rounded-full">
-              <Search className="w-5 h-5 text-white" />
-            </button>
+          <div className="flex-1">
+            <h2 className="text-gray-900 font-semibold text-sm">
+              Welcome back, {userData?.name?.split(' ')[0] || user?.displayName?.split(' ')[0] || 'User'}!
+            </h2>
+            <p className="text-gray-600 text-xs">
+              How are you feeling today? Let's keep track of your health.
+            </p>
           </div>
         </div>
+      </div>
 
-        {/* Health Score Card */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/80 text-sm">Health Score</p>
-              <p className="text-white text-2xl font-bold">85%</p>
-              <p className="text-green-300 text-xs flex items-center">
-                <Zap className="w-3 h-3 mr-1" />
-                Excellent
-              </p>
-            </div>
-            <div className="w-16 h-16 relative">
-              <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
-                <circle
-                  cx="32"
-                  cy="32"
-                  r="28"
-                  stroke="white"
-                  strokeOpacity="0.2"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <circle
-                  cx="32"
-                  cy="32"
-                  r="28"
-                  stroke="white"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray={`${85 * 1.76} 176`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white" />
-              </div>
+      {/* Health Score Card */}
+      <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-600 text-sm">Health Score</p>
+            <p className="text-gray-900 text-2xl font-bold">85%</p>
+            <p className="text-green-600 text-xs flex items-center">
+              <Zap className="w-3 h-3 mr-1" />
+              Excellent
+            </p>
+          </div>
+          <div className="w-16 h-16 relative">
+            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+              <circle
+                cx="32"
+                cy="32"
+                r="28"
+                stroke="#e5e7eb"
+                strokeWidth="4"
+                fill="none"
+              />
+              <circle
+                cx="32"
+                cy="32"
+                r="28"
+                stroke="#10b981"
+                strokeWidth="4"
+                fill="none"
+                strokeDasharray={`${85 * 1.76} 176`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Heart className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="px-4 -mt-4">
+      <div className="mb-6">
         <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-gray-900">Quick Actions</h2>
@@ -225,7 +247,7 @@ const Dashboard = () => {
       </div>
 
       {/* Services Grid */}
-      <div className="px-4 mt-6">
+      <div className="mb-6">
         <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-gray-900">All Services</h2>
@@ -251,7 +273,7 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activities */}
-      <div className="px-4 mt-6">
+      <div className="mb-6">
         <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-gray-900">Recent Activities</h2>
@@ -285,7 +307,7 @@ const Dashboard = () => {
       </div>
 
       {/* Health Tips Card */}
-      <div className="px-4 mt-6 mb-6">
+      <div className="mb-6">
         <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl p-4 text-white">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -298,10 +320,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Bottom Navigation */}
-      <BottomNavBar />
-    </div>
+    </PageLayout>
   );
 };
 

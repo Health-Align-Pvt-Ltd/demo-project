@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { firestoreService } from '../../firebase/firestoreService';
+import PageLayout from '../common/PageLayout';
 import { 
-  ArrowLeft, 
   Pill, 
   Search, 
   ShoppingCart, 
@@ -16,7 +16,13 @@ import {
   CreditCard,
   FileText,
   Plus,
-  Minus
+  Minus,
+  Eye,
+  X,
+  Star,
+  Heart,
+  Shield,
+  Truck
 } from 'lucide-react';
 
 const MedicineOrder = () => {
@@ -27,9 +33,16 @@ const MedicineOrder = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [prescriptionFile, setPrescriptionFile] = useState(null);
+  const [searchFilters, setSearchFilters] = useState({
+    category: '',
+    requiresPrescription: '',
+    inStock: true
+  });
 
-  // Mock medicines data
+  // Extended medicines data with more details
   const medicines = [
     {
       id: '1',
@@ -37,10 +50,22 @@ const MedicineOrder = () => {
       genericName: 'Acetaminophen',
       strength: '500mg',
       form: 'Tablet',
-      price: 12.99,
+      price: 45.50,
+      originalPrice: 52.00,
       manufacturer: 'PharmaCorp',
       inStock: true,
-      requiresPrescription: false
+      stockCount: 150,
+      requiresPrescription: false,
+      category: 'Pain Relief',
+      description: 'Effective pain relief and fever reducer. Suitable for headaches, muscle aches, and fever reduction.',
+      uses: ['Headache', 'Fever', 'Muscle pain', 'Dental pain'],
+      sideEffects: ['Nausea', 'Stomach upset', 'Allergic reactions (rare)'],
+      dosage: 'Adults: 1-2 tablets every 4-6 hours. Maximum 8 tablets in 24 hours.',
+      warnings: 'Do not exceed recommended dose. Consult doctor if symptoms persist.',
+      expiryDate: '2025-12-31',
+      rating: 4.5,
+      reviews: 1205,
+      discount: 12
     },
     {
       id: '2',
@@ -48,10 +73,22 @@ const MedicineOrder = () => {
       genericName: 'Amoxicillin',
       strength: '250mg',
       form: 'Capsule',
-      price: 24.99,
+      price: 89.99,
+      originalPrice: 95.00,
       manufacturer: 'MediLab',
       inStock: true,
-      requiresPrescription: true
+      stockCount: 75,
+      requiresPrescription: true,
+      category: 'Antibiotic',
+      description: 'Broad-spectrum antibiotic for bacterial infections. Effective against various bacterial strains.',
+      uses: ['Respiratory infections', 'Skin infections', 'Urinary tract infections'],
+      sideEffects: ['Nausea', 'Diarrhea', 'Allergic reactions'],
+      dosage: 'As prescribed by physician. Usually 250-500mg every 8 hours.',
+      warnings: 'Complete the full course as prescribed. Inform doctor of any allergies.',
+      expiryDate: '2025-08-15',
+      rating: 4.3,
+      reviews: 856,
+      discount: 5
     },
     {
       id: '3',
@@ -59,10 +96,91 @@ const MedicineOrder = () => {
       genericName: 'Cholecalciferol',
       strength: '1000 IU',
       form: 'Tablet',
-      price: 18.99,
+      price: 125.99,
+      originalPrice: 140.00,
       manufacturer: 'HealthPlus',
       inStock: true,
-      requiresPrescription: false
+      stockCount: 200,
+      requiresPrescription: false,
+      category: 'Vitamin Supplement',
+      description: 'Essential vitamin D3 supplement for bone health and immune system support.',
+      uses: ['Bone health', 'Immune support', 'Vitamin D deficiency'],
+      sideEffects: ['Mild stomach upset (rare)', 'Headache (with overdose)'],
+      dosage: 'One tablet daily with food or as directed by healthcare provider.',
+      warnings: 'Do not exceed recommended dose. Consult doctor if pregnant or nursing.',
+      expiryDate: '2026-03-20',
+      rating: 4.7,
+      reviews: 2341,
+      discount: 10
+    },
+    {
+      id: '4',
+      name: 'Omeprazole',
+      genericName: 'Omeprazole',
+      strength: '20mg',
+      form: 'Capsule',
+      price: 67.50,
+      originalPrice: 75.00,
+      manufacturer: 'GastroMed',
+      inStock: true,
+      stockCount: 120,
+      requiresPrescription: false,
+      category: 'Gastric Relief',
+      description: 'Proton pump inhibitor for acid reflux and gastric ulcer treatment.',
+      uses: ['Acid reflux', 'Gastric ulcers', 'GERD', 'Heartburn'],
+      sideEffects: ['Headache', 'Nausea', 'Diarrhea', 'Stomach pain'],
+      dosage: 'One capsule daily before breakfast or as directed.',
+      warnings: 'Not recommended for children under 12. Consult doctor for long-term use.',
+      expiryDate: '2025-11-10',
+      rating: 4.4,
+      reviews: 967,
+      discount: 10
+    },
+    {
+      id: '5',
+      name: 'Cetirizine',
+      genericName: 'Cetirizine HCl',
+      strength: '10mg',
+      form: 'Tablet',
+      price: 38.25,
+      originalPrice: 45.00,
+      manufacturer: 'AllerCare',
+      inStock: true,
+      stockCount: 180,
+      requiresPrescription: false,
+      category: 'Antihistamine',
+      description: 'Antihistamine for allergy relief including hay fever and urticaria.',
+      uses: ['Allergic rhinitis', 'Urticaria', 'Hay fever', 'Skin allergies'],
+      sideEffects: ['Drowsiness', 'Dry mouth', 'Fatigue'],
+      dosage: 'One tablet daily or as directed by physician.',
+      warnings: 'May cause drowsiness. Avoid alcohol. Consult doctor if pregnant.',
+      expiryDate: '2025-09-30',
+      rating: 4.2,
+      reviews: 743,
+      discount: 15
+    },
+    {
+      id: '6',
+      name: 'Aspirin',
+      genericName: 'Acetylsalicylic Acid',
+      strength: '75mg',
+      form: 'Tablet',
+      price: 28.75,
+      originalPrice: 32.00,
+      manufacturer: 'CardioMed',
+      inStock: false,
+      stockCount: 0,
+      requiresPrescription: false,
+      category: 'Cardiovascular',
+      description: 'Low-dose aspirin for cardiovascular protection and blood thinning.',
+      uses: ['Heart attack prevention', 'Stroke prevention', 'Blood clot prevention'],
+      sideEffects: ['Stomach irritation', 'Bleeding risk', 'Nausea'],
+      dosage: 'One tablet daily with food or as prescribed.',
+      warnings: 'Not suitable for children under 16. Risk of bleeding. Consult doctor.',
+      expiryDate: '2025-07-22',
+      rating: 4.1,
+      reviews: 524,
+      discount: 10
     }
   ];
 
@@ -79,14 +197,36 @@ const MedicineOrder = () => {
     }
   ];
 
+  // Load user's medicine orders
   useEffect(() => {
-    setOrders(mockOrders);
-  }, []);
+    if (userData?.uid) {
+      loadMedicineOrders();
+    }
+  }, [userData]);
 
-  const filteredMedicines = medicines.filter(medicine =>
-    medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const loadMedicineOrders = async () => {
+    try {
+      const result = await firestoreService.getMedicineOrders(userData.uid);
+      if (result.success) {
+        setOrders(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
+  };
+
+  const filteredMedicines = medicines.filter(medicine => {
+    const matchesSearch = medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         medicine.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !searchFilters.category || medicine.category === searchFilters.category;
+    const matchesPrescription = searchFilters.requiresPrescription === '' || 
+                               medicine.requiresPrescription.toString() === searchFilters.requiresPrescription;
+    const matchesStock = !searchFilters.inStock || medicine.inStock;
+    
+    return matchesSearch && matchesCategory && matchesPrescription && matchesStock;
+  });
 
   const addToCart = (medicine) => {
     setCart(prev => {
@@ -114,8 +254,14 @@ const MedicineOrder = () => {
     }
   };
 
-  const getTotalAmount = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const showMedicineDetails = (medicine) => {
+    setSelectedMedicine(medicine);
+    setShowDetailsModal(true);
+  };
+
+  const closeMedicineDetails = () => {
+    setShowDetailsModal(false);
+    setSelectedMedicine(null);
   };
 
   const handlePrescriptionUpload = (event) => {
@@ -125,73 +271,75 @@ const MedicineOrder = () => {
     }
   };
 
-  const placeOrder = async () => {
+  // Helper functions for cart calculations
+  const getItemsCount = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const getTotalAmount = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const getTotalSavings = () => {
+    return cart.reduce((total, item) => {
+      const savings = (item.originalPrice - item.price) * item.quantity;
+      return total + savings;
+    }, 0);
+  };
+
+  const getCategories = () => {
+    const categories = [...new Set(medicines.map(med => med.category))];
+    return categories.sort();
+  };
+
+  const proceedToPayment = () => {
     if (cart.length === 0) {
       alert('Your cart is empty');
       return;
     }
 
-    setLoading(true);
-    try {
-      const orderData = {
-        userId: userData.uid,
-        items: cart,
+    // Navigate to medicine payment gateway
+    navigate('/medicine-payment', {
+      state: {
+        cartItems: cart,
         totalAmount: getTotalAmount(),
-        status: 'pending',
-        deliveryAddress: 'User Address', // In real app, get from user profile
-        prescriptionFile: prescriptionFile ? 'uploaded' : null
-      };
-
-      const result = await firestoreService.createMedicineOrder(orderData);
-      if (result.success) {
-        alert('Order placed successfully!');
-        setCart([]);
-        setPrescriptionFile(null);
-        setActiveTab('orders');
+        totalSavings: getTotalSavings(),
+        itemsCount: getItemsCount(),
+        prescriptionFile: prescriptionFile
       }
-    } catch (error) {
-      alert('Error placing order');
-    }
-    setLoading(false);
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/dashboard')} className="mr-4">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Medicine Order</h1>
-              <p className="text-gray-600">Order medicines with doorstep delivery</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setActiveTab('cart')}
-              className="relative p-2 text-gray-600 hover:text-gray-900"
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {cart.length}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-      </header>
+    <PageLayout 
+      title="Medicine Order"
+      showBack={true}
+      className="bg-gray-50"
+    >
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="px-6">
-          <div className="flex space-x-8">
+      {/* Header with cart button */}
+      <div className="bg-white shadow-sm border-b mb-4 -mx-4">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Medicine Order</h2>
+            <p className="text-sm text-gray-600">Order medicines with doorstep delivery</p>
+          </div>
+          <button
+            onClick={() => setActiveTab('cart')}
+            className="relative p-2 text-gray-600 hover:text-gray-900"
+          >
+            <ShoppingCart className="w-6 h-6" />
+            {getItemsCount() > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                {getItemsCount()}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
             <button
               onClick={() => setActiveTab('browse')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'browse'
                   ? 'border-green-500 text-green-600'
                   : 'border-transparent text-gray-500'
@@ -201,7 +349,7 @@ const MedicineOrder = () => {
             </button>
             <button
               onClick={() => setActiveTab('prescription')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'prescription'
                   ? 'border-green-500 text-green-600'
                   : 'border-transparent text-gray-500'
@@ -211,17 +359,17 @@ const MedicineOrder = () => {
             </button>
             <button
               onClick={() => setActiveTab('cart')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'cart'
                   ? 'border-green-500 text-green-600'
                   : 'border-transparent text-gray-500'
               }`}
             >
-              Cart ({cart.length})
+              Cart ({getItemsCount()})
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'orders'
                   ? 'border-green-500 text-green-600'
                   : 'border-transparent text-gray-500'
@@ -233,64 +381,150 @@ const MedicineOrder = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4">
         {/* Browse Medicines Tab */}
         {activeTab === 'browse' && (
           <div>
             {/* Search */}
             <div className="mb-6">
-              <div className="relative max-w-md">
+              <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search medicines..."
+                  placeholder="Search medicines by name, generic name or category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
+              </div>
+              
+              {/* Filter Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <select
+                  value={searchFilters.category}
+                  onChange={(e) => setSearchFilters(prev => ({ ...prev, category: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                >
+                  <option value="">All Categories</option>
+                  {getCategories().map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                
+                <select
+                  value={searchFilters.requiresPrescription}
+                  onChange={(e) => setSearchFilters(prev => ({ ...prev, requiresPrescription: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                >
+                  <option value="">All Medicines</option>
+                  <option value="false">Over the Counter</option>
+                  <option value="true">Prescription Required</option>
+                </select>
+                
+                <label className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg">
+                  <input
+                    type="checkbox"
+                    checked={searchFilters.inStock}
+                    onChange={(e) => setSearchFilters(prev => ({ ...prev, inStock: e.target.checked }))}
+                    className="text-green-600 focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">In Stock Only</span>
+                </label>
               </div>
             </div>
 
             {/* Medicines Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredMedicines.map(medicine => (
-                <div key={medicine.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div key={medicine.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{medicine.name}</h3>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="text-base font-semibold text-gray-900">{medicine.name}</h3>
+                        {medicine.discount > 0 && (
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                            {medicine.discount}% OFF
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">{medicine.genericName}</p>
-                      <p className="text-sm text-gray-500">{medicine.strength} - {medicine.form}</p>
-                      <p className="text-xs text-gray-500 mt-1">{medicine.manufacturer}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">${medicine.price}</p>
-                      {medicine.requiresPrescription && (
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                          Rx Required
-                        </span>
-                      )}
+                      <p className="text-xs text-gray-500">{medicine.strength} • {medicine.form}</p>
+                      <p className="text-xs text-gray-400 mt-1">{medicine.manufacturer}</p>
+                      
+                      {/* Rating */}
+                      <div className="flex items-center space-x-1 mt-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              className={`w-3 h-3 ${
+                                i < Math.floor(medicine.rating) 
+                                  ? 'text-yellow-400 fill-current' 
+                                  : 'text-gray-300'
+                              }`} 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-600">{medicine.rating}</span>
+                        <span className="text-xs text-gray-400">({medicine.reviews})</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      medicine.inStock 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {medicine.inStock ? 'In Stock' : 'Out of Stock'}
-                    </span>
+                  {/* Price Section */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-lg font-bold text-green-600">₹{medicine.price}</p>
+                        {medicine.originalPrice > medicine.price && (
+                          <p className="text-sm text-gray-400 line-through">₹{medicine.originalPrice}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          medicine.inStock 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {medicine.inStock ? `In Stock (${medicine.stockCount})` : 'Out of Stock'}
+                        </span>
+                        {medicine.requiresPrescription && (
+                          <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-medium">
+                            Rx Required
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => showMedicineDetails(medicine)}
+                      className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-1 text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Details</span>
+                    </button>
                     <button
                       onClick={() => addToCart(medicine)}
                       disabled={!medicine.inStock}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1 text-sm"
                     >
-                      Add to Cart
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>Add to Cart</span>
                     </button>
                   </div>
                 </div>
               ))}
             </div>
+
+            {filteredMedicines.length === 0 && (
+              <div className="text-center py-12">
+                <Pill className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No medicines found matching your search.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -346,50 +580,69 @@ const MedicineOrder = () => {
 
         {/* Cart Tab */}
         {activeTab === 'cart' && (
-          <div className="max-w-4xl mx-auto">
+          <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Shopping Cart</h2>
             
             {cart.length === 0 ? (
               <div className="text-center py-12">
                 <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Your cart is empty</p>
+                <p className="text-gray-500 mb-4">Your cart is empty</p>
                 <button
                   onClick={() => setActiveTab('browse')}
-                  className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Browse Medicines
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Cart Items */}
                 {cart.map(item => (
-                  <div key={item.id} className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center justify-between">
+                  <div key={item.id} className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
+                    <div className="flex items-start space-x-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-600">{item.genericName}</p>
-                        <p className="text-sm text-gray-500">{item.strength} - {item.form}</p>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="w-8 h-8 border border-gray-300 rounded flex items-center justify-center hover:bg-gray-50"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className="w-8 text-center">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="w-8 h-8 border border-gray-300 rounded flex items-center justify-center hover:bg-gray-50"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-base font-semibold text-gray-900">{item.name}</h3>
+                          {item.discount > 0 && (
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                              {item.discount}% OFF
+                            </span>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-green-600">
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </p>
+                        <p className="text-sm text-gray-600">{item.genericName}</p>
+                        <p className="text-xs text-gray-500 mb-2">{item.strength} • {item.form}</p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <span className="w-10 text-center font-medium">{item.quantity}</span>
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-lg font-bold text-green-600">
+                                ₹{(item.price * item.quantity).toFixed(2)}
+                              </p>
+                              {item.originalPrice > item.price && (
+                                <p className="text-sm text-gray-400 line-through">
+                                  ₹{(item.originalPrice * item.quantity).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">₹{item.price} per {item.form.toLowerCase()}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -397,20 +650,72 @@ const MedicineOrder = () => {
                 ))}
 
                 {/* Order Summary */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-semibold">Total Amount:</span>
-                    <span className="text-2xl font-bold text-green-600">
-                      ${getTotalAmount().toFixed(2)}
-                    </span>
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 border border-green-100">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Items ({getItemsCount()})</span>
+                      <span className="font-medium">₹{cart.reduce((total, item) => total + (item.originalPrice * item.quantity), 0).toFixed(2)}</span>
+                    </div>
+                    
+                    {getTotalSavings() > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Savings</span>
+                        <span className="font-medium text-green-600">-₹{getTotalSavings().toFixed(2)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Delivery Charges</span>
+                      <span className="font-medium text-green-600">FREE</span>
+                    </div>
+                    
+                    <div className="border-t border-gray-200 pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-900">Total Amount</span>
+                        <div className="text-right">
+                          <span className="text-2xl font-bold text-green-600">
+                            ₹{getTotalAmount().toFixed(2)}
+                          </span>
+                          {getTotalSavings() > 0 && (
+                            <p className="text-xs text-green-600">You saved ₹{getTotalSavings().toFixed(2)}!</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    onClick={placeOrder}
-                    disabled={loading}
-                    className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Placing Order...' : 'Place Order'}
-                  </button>
+                  
+                  {/* Prescription Required Notice */}
+                  {cart.some(item => item.requiresPrescription) && (
+                    <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm text-orange-800">
+                          Some items require prescription. Upload before checkout.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="mt-6 space-y-3">
+                    <button
+                      onClick={proceedToPayment}
+                      disabled={loading}
+                      className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <CreditCard className="w-5 h-5" />
+                      <span>{loading ? 'Processing...' : 'Proceed to Payment'}</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setActiveTab('browse')}
+                      className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    >
+                      Continue Shopping
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

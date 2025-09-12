@@ -13,6 +13,9 @@ import PaymentGateway from './components/payment/PaymentGateway'
 import PaymentSuccess from './components/payment/PaymentSuccess'
 import Wallet from './components/wallet/Wallet'
 import AmbulanceBooking from './components/ambulance/AmbulanceBooking'
+import AmbulanceTracking from './components/ambulance/AmbulanceTracking'
+import AmbulancePaymentGateway from './components/ambulance/AmbulancePaymentGateway'
+import AmbulancePaymentSuccess from './components/ambulance/AmbulancePaymentSuccess'
 import BloodRequest from './components/blood/BloodRequest'
 import MedicineOrder from './components/medicine/MedicineOrder'
 import Profile from './components/profile/Profile'
@@ -103,6 +106,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <AmbulanceBooking />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ambulance-payment" 
+            element={
+              <ProtectedRoute>
+                <AmbulancePaymentGateway />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/track-ambulance" 
+            element={
+              <ProtectedRoute>
+                <AmbulanceTracking />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ambulance-payment-success" 
+            element={
+              <ProtectedRoute>
+                <AmbulancePaymentSuccess />
               </ProtectedRoute>
             } 
           />

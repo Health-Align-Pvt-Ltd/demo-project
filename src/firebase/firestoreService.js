@@ -175,6 +175,19 @@ export const firestoreService = {
     }
   },
 
+  async updateAmbulanceBooking(bookingId, updates) {
+    try {
+      await updateDoc(doc(db, 'ambulanceBookings', bookingId), {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating ambulance booking:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Transactions
   async createTransaction(transactionData) {
     try {
