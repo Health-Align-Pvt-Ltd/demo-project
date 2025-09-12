@@ -15,10 +15,13 @@
     "date-fns": "^4.1.0",
     "firebase": "^12.2.1",
     "health-align": "file:",
+    "js-cookie": "^3.0.5",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.1.5",
     "uuid": "^13.0.0"
   },

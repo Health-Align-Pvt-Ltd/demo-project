@@ -271,7 +271,12 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">{activity.time}</p>
-                  <ChevronRight className="w-4 h-4 text-gray-300 mt-1" />
+                  <button 
+                    onClick={() => navigate('/consultation')}
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+                  >
+                    View Details
+                  </button>
                 </div>
               </div>
             ))}

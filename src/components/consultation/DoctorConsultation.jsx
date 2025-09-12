@@ -318,7 +318,11 @@ const DoctorConsultation = () => {
             ) : (
               <div className="space-y-3">
                 {appointments.map(appointment => (
-                  <div key={appointment.id} className="bg-white rounded-lg shadow p-4">
+                  <div 
+                    key={appointment.id} 
+                    onClick={() => navigate(`/appointment/${appointment.id}`)}
+                    className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-gray-900">{appointment.doctorName}</h3>
@@ -329,12 +333,14 @@ const DoctorConsultation = () => {
                       </div>
                       <div className="text-right">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          appointment.status === 'scheduled' ? 'bg-green-100 text-green-800' :
+                          appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                           appointment.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                          appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {appointment.status}
                         </span>
+                        <p className="text-xs text-gray-500 mt-1">Tap for details</p>
                       </div>
                     </div>
                   </div>

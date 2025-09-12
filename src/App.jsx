@@ -8,6 +8,7 @@ import Register from './components/auth/Register'
 import Dashboard from './components/dashboard/Dashboard'
 import DoctorConsultation from './components/consultation/DoctorConsultation'
 import DoctorDetails from './components/consultation/DoctorDetails'
+import AppointmentDetails from './components/appointment/AppointmentDetails'
 import PaymentGateway from './components/payment/PaymentGateway'
 import PaymentSuccess from './components/payment/PaymentSuccess'
 import Wallet from './components/wallet/Wallet'
@@ -62,6 +63,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DoctorDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/appointment/:appointmentId" 
+            element={
+              <ProtectedRoute>
+                <AppointmentDetails />
               </ProtectedRoute>
             } 
           />

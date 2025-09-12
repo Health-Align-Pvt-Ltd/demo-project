@@ -16,7 +16,8 @@ import {
   MapPin,
   Copy,
   ExternalLink,
-  Gift
+  Gift,
+  FileText
 } from 'lucide-react';
 
 const PaymentSuccess = () => {
@@ -271,11 +272,19 @@ const PaymentSuccess = () => {
           </div>
           
           <button
-            onClick={() => navigate('/consultation')}
+            onClick={() => navigate(`/appointment/${appointmentData.id}`)}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium text-sm hover:bg-blue-700 flex items-center justify-center space-x-2"
           >
+            <FileText className="w-4 h-4" />
+            <span>View Appointment Details</span>
+          </button>
+          
+          <button
+            onClick={() => navigate('/consultation')}
+            className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium text-sm hover:bg-gray-200 flex items-center justify-center space-x-2"
+          >
             <Calendar className="w-4 h-4" />
-            <span>View My Appointments</span>
+            <span>My Appointments</span>
           </button>
           
           <button
