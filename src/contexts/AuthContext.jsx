@@ -173,7 +173,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const resetPassword = async (email) => {
+  // Update user address and save to cookie
+  const updateAddress = async (address) => {
+    try {
+      if (!user?.uid) {
+        toast.error('User not authenticated');
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const result = await authService.updateUserAddress(user.uid, address);
+      if (result.success) {
+        // Update the local userData state
+        const updatedUserData = await authService.getCurrentUserData();
+        setUserData(updatedUserData);
+        toast.success('Address updated successfully');
+        return { success: true };
+      } else {
+        toast.error(result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      toast.error('Address update failed');
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Get address from cookie
+  const getAddressFromCookie = () => {
+    return authService.getAddressFromCookie();
+  };
     try {
       const result = await authService.resetPassword(email);
       if (result.success) {
@@ -201,6 +229,8 @@ export const AuthProvider = ({ children }) => {
     registerWithGoogle,
     logout,
     updateProfile,
+    updateAddress,
+    getAddressFromCookie,
     resetPassword
   };
 

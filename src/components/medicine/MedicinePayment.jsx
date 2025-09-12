@@ -226,6 +226,11 @@ const MedicinePayment = () => {
       if (result.success) {
         setOrderId(newOrderId);
         setOrderSuccess(true);
+        
+        // Clear cart from Firebase after successful order
+        if (userData?.uid) {
+          await firestoreService.clearCartFromFirebase(userData.uid, 'medicine');
+        }
       } else {
         throw new Error('Failed to create order');
       }

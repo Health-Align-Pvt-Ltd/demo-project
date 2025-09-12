@@ -35,166 +35,44 @@ const MyOrders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState(null);
 
-  // Sample orders data
-  const sampleOrders = [
-    {
-      id: 'PH001',
-      orderNumber: 'PH001',
-      status: 'delivered',
-      totalAmount: 285.50,
-      items: [
-        {
-          id: '1',
-          name: 'Dolo 650 Tablet',
-          genericName: 'Paracetamol',
-          strength: '650mg',
-          form: 'Tablet',
-          quantity: 2,
-          price: 32.50,
-          image: '/api/placeholder/60/60'
-        },
-        {
-          id: '2',
-          name: 'Vitamin D3 60K',
-          genericName: 'Cholecalciferol',
-          strength: '60000 IU',
-          form: 'Capsule',
-          quantity: 1,
-          price: 156.99,
-          image: '/api/placeholder/60/60'
-        }
-      ],
-      orderDate: '2024-01-15T10:30:00Z',
-      deliveryDate: '2024-01-16T15:45:00Z',
-      estimatedDelivery: '2024-01-16T18:00:00Z',
-      pharmacy: {
-        name: 'Apollo Pharmacy',
-        address: '123 Main Street, Downtown Area',
-        phone: '+91 98765 43210'
-      },
-      delivery: {
-        address: '456 Home Street, Residential Area, Mumbai',
-        type: 'standard',
-        charges: 0
-      },
-      payment: {
-        method: 'UPI',
-        transactionId: 'TXN123456789',
-        status: 'completed'
-      },
-      tracking: {
-        orderPlaced: '2024-01-15T10:30:00Z',
-        orderConfirmed: '2024-01-15T10:45:00Z',
-        shipped: '2024-01-16T09:30:00Z',
-        delivered: '2024-01-16T15:45:00Z'
-      }
-    },
-    {
-      id: 'PH002',
-      orderNumber: 'PH002',
-      status: 'shipped',
-      totalAmount: 599.00,
-      items: [
-        {
-          id: '4',
-          name: 'Cetaphil Gentle Cleanser',
-          genericName: 'Cleansing Lotion',
-          strength: '250ml',
-          form: 'Liquid',
-          quantity: 1,
-          price: 599.00,
-          image: '/api/placeholder/60/60'
-        }
-      ],
-      orderDate: '2024-01-20T14:20:00Z',
-      deliveryDate: null,
-      estimatedDelivery: '2024-01-21T18:00:00Z',
-      pharmacy: {
-        name: 'MedPlus Pharmacy',
-        address: '789 Health Complex, Central Mumbai',
-        phone: '+91 98765 43211'
-      },
-      delivery: {
-        address: '456 Home Street, Residential Area, Mumbai',
-        type: 'express',
-        charges: 50
-      },
-      payment: {
-        method: 'Credit Card',
-        transactionId: 'TXN987654321',
-        status: 'completed'
-      },
-      tracking: {
-        orderPlaced: '2024-01-20T14:20:00Z',
-        orderConfirmed: '2024-01-20T14:35:00Z',
-        shipped: '2024-01-21T08:15:00Z',
-        delivered: null
-      }
-    },
-    {
-      id: 'PH003',
-      orderNumber: 'PH003',
-      status: 'confirmed',
-      totalAmount: 89.99,
-      items: [
-        {
-          id: '3',
-          name: 'Amoxicillin 500mg',
-          genericName: 'Amoxicillin',
-          strength: '500mg',
-          form: 'Capsule',
-          quantity: 1,
-          price: 89.99,
-          image: '/api/placeholder/60/60'
-        }
-      ],
-      orderDate: '2024-01-22T09:15:00Z',
-      deliveryDate: null,
-      estimatedDelivery: '2024-01-23T17:00:00Z',
-      pharmacy: {
-        name: '1mg Quick Pharmacy',
-        address: '321 Express Lane, Andheri, Mumbai',
-        phone: '+91 98765 43213'
-      },
-      delivery: {
-        address: '456 Home Street, Residential Area, Mumbai',
-        type: 'standard',
-        charges: 0
-      },
-      payment: {
-        method: 'Cash on Delivery',
-        transactionId: null,
-        status: 'pending'
-      },
-      tracking: {
-        orderPlaced: '2024-01-22T09:15:00Z',
-        orderConfirmed: '2024-01-22T09:30:00Z',
-        shipped: null,
-        delivered: null
-      }
-    }
-  ];
-
   useEffect(() => {
-    loadOrders();
-  }, [userData]);
+    if (userData?.uid) {
+      loadOrders();
+    } else {
+      setOrders([]);
+      setLoading(false);
+    }
+  }, [userData?.uid]);
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      // In a real app, load from Firebase
-      // const result = await firestoreService.getMedicineOrders(userData.uid);
-      // if (result.success) {
-      //   setOrders(result.data);
-      // }
+      if (!userData?.uid) {
+        console.log('No user ID available, cannot load orders');
+        setOrders([]);
+        return;
+      }
+
+      console.log('Loading pharmacy orders from Firebase for user:', userData.uid);
+      const result = await firestoreService.getPharmacyOrders(userData.uid);
+      console.log('Pharmacy orders load result:', result);
       
-      // For demo, use sample data
-      setTimeout(() => {
-        setOrders(sampleOrders);
-        setLoading(false);
-      }, 1000);
+      if (result.success) {
+        setOrders(result.data || []);
+        console.log('Pharmacy orders loaded:', result.data?.length || 0, 'orders');
+        if (!result.data || result.data.length === 0) {
+          console.log('No pharmacy orders found in Firebase for user:', userData.uid);
+        }
+      } else {
+        console.error('Failed to load orders from Firebase:', result.error);
+        setOrders([]);
+        toast.error('Failed to load orders. Please try again.');
+      }
     } catch (error) {
       console.error('Error loading orders:', error);
+      setOrders([]);
+      toast.error('Error loading orders. Please check your connection.');
+    } finally {
       setLoading(false);
     }
   };
@@ -242,18 +120,22 @@ const MyOrders = () => {
   };
 
   const filteredOrders = orders.filter(order => {
+    if (!order) return false;
+    const orderNumber = order.orderNumber || order.id || '';
     const matchesFilter = selectedFilter === 'all' || order.status === selectedFilter;
-    const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (order.items && Array.isArray(order.items) && order.items.some(item => 
+                           item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())
+                         ));
     return matchesFilter && matchesSearch;
   });
 
   const orderFilters = [
     { id: 'all', label: 'All Orders', count: orders.length },
-    { id: 'confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'confirmed').length },
-    { id: 'shipped', label: 'Shipped', count: orders.filter(o => o.status === 'shipped').length },
-    { id: 'delivered', label: 'Delivered', count: orders.filter(o => o.status === 'delivered').length },
-    { id: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'cancelled').length }
+    { id: 'confirmed', label: 'Confirmed', count: orders.filter(o => o && o.status === 'confirmed').length },
+    { id: 'shipped', label: 'Shipped', count: orders.filter(o => o && o.status === 'shipped').length },
+    { id: 'delivered', label: 'Delivered', count: orders.filter(o => o && o.status === 'delivered').length },
+    { id: 'cancelled', label: 'Cancelled', count: orders.filter(o => o && o.status === 'cancelled').length }
   ];
 
   if (loading) {
@@ -285,8 +167,8 @@ const MyOrders = () => {
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Package className="w-12 h-12 text-gray-400" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
-          <p className="text-gray-600 mb-8">Start shopping to see your orders here</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders found</h2>
+          <p className="text-gray-600 mb-8">You haven't placed any pharmacy orders yet.<br />Your orders will appear here once you make a purchase.</p>
           <button
             onClick={() => navigate('/pharmacy')}
             className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
@@ -306,12 +188,24 @@ const MyOrders = () => {
       backgroundColor="bg-gradient-to-r from-green-600 to-green-700"
       textColor="text-white"
       rightActions={
-        <button
-          onClick={loadOrders}
-          className="p-2 rounded-full hover:bg-white/20 transition-colors"
-        >
-          <RefreshCw className="w-5 h-5 text-white" />
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {
+              // Force browser refresh to clear cache
+              window.location.reload(true);
+            }}
+            className="p-2 rounded-full hover:bg-white/20 transition-colors text-xs"
+            title="Refresh Page"
+          >
+            ↻
+          </button>
+          <button
+            onClick={loadOrders}
+            className="p-2 rounded-full hover:bg-white/20 transition-colors"
+          >
+            <RefreshCw className="w-5 h-5 text-white" />
+          </button>
+        </div>
       }
     >
       <div className="max-w-4xl mx-auto space-y-6">
@@ -355,37 +249,37 @@ const MyOrders = () => {
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Order #{order.orderNumber}</h3>
-                    <p className="text-sm text-gray-600">Placed on {formatDate(order.orderDate)}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">Order #{order.orderNumber || order.id}</h3>
+                    <p className="text-sm text-gray-600">Placed on {formatDate(order.orderDate || order.createdAt)}</p>
                   </div>
                   <div className="text-right">
-                    <div className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span className="capitalize">{order.status}</span>
+                    <div className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status || 'pending')}`}>
+                      {getStatusIcon(order.status || 'pending')}
+                      <span className="capitalize">{order.status || 'pending'}</span>
                     </div>
-                    <p className="text-lg font-bold text-gray-900 mt-1">₹{order.totalAmount.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">₹{(order.totalAmount || 0).toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Items Preview */}
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="flex -space-x-2">
-                    {order.items.slice(0, 3).map((item, index) => (
+                    {(order.items || []).slice(0, 3).map((item, index) => (
                       <div key={index} className="w-12 h-12 bg-gray-100 rounded-lg border-2 border-white flex items-center justify-center">
                         <Package className="w-6 h-6 text-gray-400" />
                       </div>
                     ))}
-                    {order.items.length > 3 && (
+                    {(order.items || []).length > 3 && (
                       <div className="w-12 h-12 bg-gray-100 rounded-lg border-2 border-white flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600">+{order.items.length - 3}</span>
+                        <span className="text-xs font-medium text-gray-600">+{(order.items || []).length - 3}</span>
                       </div>
                     )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                      {(order.items || []).length} item{(order.items || []).length > 1 ? 's' : ''}
                     </p>
-                    <p className="text-xs text-gray-600">{order.pharmacy.name}</p>
+                    <p className="text-xs text-gray-600">{order.pharmacy?.name || 'Pharmacy'}</p>
                   </div>
                 </div>
 
@@ -401,7 +295,7 @@ const MyOrders = () => {
                     {order.status === 'delivered' && (
                       <div className="flex items-center space-x-1 text-sm text-green-600">
                         <CheckCircle className="w-4 h-4" />
-                        <span>Delivered on {formatDate(order.deliveryDate)}</span>
+                        <span>Delivered on {formatDate(order.deliveryDate || order.updatedAt)}</span>
                       </div>
                     )}
                   </div>
@@ -428,19 +322,19 @@ const MyOrders = () => {
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-3">Order Items</h4>
                       <div className="space-y-3">
-                        {order.items.map((item, index) => (
+                        {(order.items || []).map((item, index) => (
                           <div key={index} className="flex items-center space-x-3 bg-white p-3 rounded-lg">
                             <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                               <Package className="w-6 h-6 text-gray-400" />
                             </div>
                             <div className="flex-1">
-                              <h5 className="font-medium text-gray-900">{item.name}</h5>
-                              <p className="text-sm text-gray-600">{item.strength} • {item.form}</p>
-                              <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                              <h5 className="font-medium text-gray-900">{item.name || 'Medicine'}</h5>
+                              <p className="text-sm text-gray-600">{item.strength || ''} • {item.form || 'Item'}</p>
+                              <p className="text-sm text-gray-500">Qty: {item.quantity || 1}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-semibold text-gray-900">₹{(item.price * item.quantity).toFixed(2)}</p>
-                              <p className="text-xs text-gray-500">₹{item.price} each</p>
+                              <p className="font-semibold text-gray-900">₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}</p>
+                              <p className="text-xs text-gray-500">₹{(item.price || 0).toFixed(2)} each</p>
                             </div>
                           </div>
                         ))}
@@ -453,14 +347,14 @@ const MyOrders = () => {
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-3">Pharmacy Details</h4>
                         <div className="bg-white p-3 rounded-lg">
-                          <p className="font-medium text-gray-900">{order.pharmacy.name}</p>
+                          <p className="font-medium text-gray-900">{order.pharmacy?.name || 'Pharmacy'}</p>
                           <p className="text-sm text-gray-600 flex items-center space-x-1 mt-1">
                             <MapPin className="w-3 h-3" />
-                            <span>{order.pharmacy.address}</span>
+                            <span>{order.pharmacy?.address || 'Address not available'}</span>
                           </p>
                           <p className="text-sm text-gray-600 flex items-center space-x-1 mt-1">
                             <Phone className="w-3 h-3" />
-                            <span>{order.pharmacy.phone}</span>
+                            <span>{order.pharmacy?.phone || 'Phone not available'}</span>
                           </p>
                         </div>
                       </div>
@@ -469,15 +363,15 @@ const MyOrders = () => {
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-3">Delivery Details</h4>
                         <div className="bg-white p-3 rounded-lg">
-                          <p className="text-sm text-gray-900 mb-2">{order.delivery.address}</p>
+                          <p className="text-sm text-gray-900 mb-2">{order.delivery?.address || order.deliveryAddress || 'Delivery address not available'}</p>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Delivery Type:</span>
-                            <span className="font-medium capitalize">{order.delivery.type}</span>
+                            <span className="font-medium capitalize">{order.delivery?.type || order.deliveryType || 'standard'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm mt-1">
                             <span className="text-gray-600">Delivery Charges:</span>
                             <span className="font-medium">
-                              {order.delivery.charges === 0 ? 'FREE' : `₹${order.delivery.charges}`}
+                              {(order.delivery?.charges || order.deliveryCharges || 0) === 0 ? 'FREE' : `₹${order.delivery?.charges || order.deliveryCharges || 0}`}
                             </span>
                           </div>
                         </div>
@@ -489,20 +383,20 @@ const MyOrders = () => {
                         <div className="bg-white p-3 rounded-lg">
                           <div className="flex items-center justify-between text-sm mb-2">
                             <span className="text-gray-600">Payment Method:</span>
-                            <span className="font-medium">{order.payment.method}</span>
+                            <span className="font-medium">{order.payment?.method || order.paymentMethod || 'Not specified'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm mb-2">
                             <span className="text-gray-600">Payment Status:</span>
                             <span className={`font-medium ${
-                              order.payment.status === 'completed' ? 'text-green-600' : 'text-yellow-600'
+                              (order.payment?.status || order.paymentStatus) === 'completed' ? 'text-green-600' : 'text-yellow-600'
                             }`}>
-                              {order.payment.status === 'completed' ? 'Paid' : 'Pending'}
+                              {(order.payment?.status || order.paymentStatus) === 'completed' ? 'Paid' : 'Pending'}
                             </span>
                           </div>
-                          {order.payment.transactionId && (
+                          {(order.payment?.transactionId || order.transactionId) && (
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">Transaction ID:</span>
-                              <span className="font-medium text-xs">{order.payment.transactionId}</span>
+                              <span className="font-medium text-xs">{order.payment?.transactionId || order.transactionId}</span>
                             </div>
                           )}
                         </div>

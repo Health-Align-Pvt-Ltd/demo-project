@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
 import toast from 'react-hot-toast';
 import { 
@@ -156,7 +157,8 @@ const MedicineSearch = () => {
   ];
 
   useEffect(() => {
-    // Load recent searches from localStorage
+    // Load recent searches from Firebase (you can implement this later)
+    // For now, keeping localStorage for recent searches as it's user-specific browser data
     const saved = localStorage.getItem('recentSearches');
     if (saved) {
       setRecentSearches(JSON.parse(saved));
@@ -168,11 +170,17 @@ const MedicineSearch = () => {
       'Cetaphil', 'Insulin', 'Omeprazole', 'Azithromycin', 'Metformin'
     ]);
 
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('pharmacyCart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
+    // Load cart from Firebase
+    const loadCart = async () => {
+      if (userData?.uid) {
+        const result = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
+        if (result.success) {
+          setCart(result.data);
+        }
+      }
+    };
+    
+    loadCart();
 
     // Check if there's a search query from navigation
     const urlParams = new URLSearchParams(location.search);
@@ -186,7 +194,7 @@ const MedicineSearch = () => {
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
-  }, [location.search]);
+  }, [location.search, userData]);
 
   const performSearch = (query) => {
     if (!query.trim()) {
@@ -307,7 +315,7 @@ const MedicineSearch = () => {
     });
   };
 
-  const addToCart = (medicine) => {
+  const addToCart = async (medicine) => {
     const updatedCart = [...cart];
     const existingItem = updatedCart.find(item => item.id === medicine.id);
     
@@ -326,7 +334,15 @@ const MedicineSearch = () => {
     }
     
     setCart(updatedCart);
-    localStorage.setItem('pharmacyCart', JSON.stringify(updatedCart));
+    
+    // Save to Firebase
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, updatedCart, 'pharmacy');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
   };
 
   const getCartItemsCount = () => {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
 import toast from 'react-hot-toast';
 import { 
@@ -90,28 +91,53 @@ const PharmacyMedicineDetails = () => {
     // ... other medicines would be here
   ];
 
-  // Load medicine data and cart from localStorage
+  // Load medicine data and cart from Firebase
   useEffect(() => {
     const foundMedicine = medicines.find(med => med.id === medicineId);
     setMedicine(foundMedicine);
     setLoading(false);
 
-    // Load cart and wishlist from localStorage
-    const savedCart = localStorage.getItem('pharmacyCart');
-    const savedWishlist = localStorage.getItem('pharmacyWishlist');
+    // Load cart and wishlist from Firebase
+    const loadCartAndWishlist = async () => {
+      if (userData?.uid) {
+        // Load cart from Firebase
+        const cartResult = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
+        if (cartResult.success) {
+          setCart(cartResult.data);
+        }
+        
+        // Load wishlist from Firebase
+        const wishlistResult = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy_wishlist');
+        if (wishlistResult.success) {
+          setWishlist(wishlistResult.data);
+        }
+      }
+    };
     
-    if (savedCart) setCart(JSON.parse(savedCart));
-    if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
-  }, [medicineId]);
+    loadCartAndWishlist();
+  }, [medicineId, userData]);
 
-  // Save cart to localStorage whenever cart changes
-  useEffect(() => {
-    localStorage.setItem('pharmacyCart', JSON.stringify(cart));
-  }, [cart]);
+  // Save cart to Firebase
+  const saveCartToFirebase = async (cartData) => {
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, cartData, 'pharmacy');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
+  };
 
-  useEffect(() => {
-    localStorage.setItem('pharmacyWishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+  // Save wishlist to Firebase
+  const saveWishlistToFirebase = async (wishlistData) => {
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, wishlistData, 'pharmacy_wishlist');
+      if (!result.success) {
+        console.error('Error saving wishlist to Firebase:', result.error);
+        toast.error('Failed to save wishlist. Please try again.');
+      }
+    }
+  };
 
   const handleQuantityChange = (delta) => {
     setQuantity(prev => {
@@ -130,14 +156,14 @@ const PharmacyMedicineDetails = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      setCart(prev => {
-        const existingItem = prev.find(item => item.id === medicine.id);
+      const newCart = (() => {
+        const existingItem = cart.find(item => item.id === medicine.id);
         
         if (existingItem) {
           const newQuantity = existingItem.quantity + quantity;
           if (newQuantity > medicine.stockCount) {
             toast.error(`Only ${medicine.stockCount} items available in stock`);
-            return prev;
+            return cart;
           }
           
           toast.success(`Updated quantity to ${newQuantity}`, {
@@ -145,7 +171,7 @@ const PharmacyMedicineDetails = () => {
             duration: 2000
           });
           
-          return prev.map(item =>
+          return cart.map(item =>
             item.id === medicine.id 
               ? { ...item, quantity: newQuantity }
               : item
@@ -156,10 +182,12 @@ const PharmacyMedicineDetails = () => {
             duration: 2000
           });
           
-          return [...prev, { ...medicine, quantity }];
+          return [...cart, { ...medicine, quantity }];
         }
-      });
-
+      })();
+      
+      setCart(newCart);
+      await saveCartToFirebase(newCart);
       setQuantity(1);
       
     } catch (error) {
@@ -169,16 +197,19 @@ const PharmacyMedicineDetails = () => {
     }
   };
 
-  const toggleWishlist = () => {
-    setWishlist(prev => {
-      const isInWishlist = prev.find(item => item.id === medicine.id);
+  const toggleWishlist = async () => {
+    const newWishlist = (() => {
+      const isInWishlist = wishlist.find(item => item.id === medicine.id);
       if (isInWishlist) {
         toast.success('Removed from wishlist', { icon: '💔' });
-        return prev.filter(item => item.id !== medicine.id);
+        return wishlist.filter(item => item.id !== medicine.id);
       }
       toast.success('Added to wishlist!', { icon: '❤️' });
-      return [...prev, medicine];
-    });
+      return [...wishlist, medicine];
+    })();
+    
+    setWishlist(newWishlist);
+    await saveWishlistToFirebase(newWishlist);
   };
 
   const isInWishlist = wishlist.find(item => item?.id === medicine?.id);

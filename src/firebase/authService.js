@@ -330,6 +330,63 @@ export const authService = {
     }
   },
 
+  // Update user profile
+  async updateUserProfile(data) {
+    const user = auth.currentUser;
+    if (!user) {
+      return { success: false, error: 'No user is currently signed in' };
+    }
+
+    try {
+      // Update user profile in Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        ...data,
+        updatedAt: new Date().toISOString()
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Update user address and save to cookie
+  async updateUserAddress(userId, address) {
+    try {
+      // Update address in Firestore
+      await updateDoc(doc(db, 'users', userId), {
+        address: address,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Save address to cookie
+      document.cookie = `userAddress=${encodeURIComponent(JSON.stringify(address))}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user address:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get address from cookie
+  getAddressFromCookie() {
+    try {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'userAddress') {
+          return JSON.parse(decodeURIComponent(value));
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting address from cookie:', error);
+      return null;
+    }
+  },
+
   // Listen to auth state changes
   onAuthStateChange(callback) {
     return onAuthStateChanged(auth, callback);

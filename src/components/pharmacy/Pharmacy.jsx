@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
 import toast from 'react-hot-toast';
 import { 
@@ -215,23 +216,48 @@ const Pharmacy = () => {
   // Brand list
   const brands = ['Cipla', 'Sun Pharma', 'Dr. Reddy\'s', 'Lupin', 'Aurobindo', 'Micro Labs', 'Mankind'];
 
-  // Load cart and wishlist from localStorage
+  // Load cart and wishlist from Firebase
   useEffect(() => {
-    const savedCart = localStorage.getItem('pharmacyCart');
-    const savedWishlist = localStorage.getItem('pharmacyWishlist');
+    const loadCartAndWishlist = async () => {
+      if (userData?.uid) {
+        // Load cart from Firebase
+        const cartResult = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
+        if (cartResult.success) {
+          setCart(cartResult.data);
+        }
+        
+        // Load wishlist from Firebase
+        const wishlistResult = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy_wishlist');
+        if (wishlistResult.success) {
+          setWishlist(wishlistResult.data);
+        }
+      }
+    };
     
-    if (savedCart) setCart(JSON.parse(savedCart));
-    if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
-  }, []);
+    loadCartAndWishlist();
+  }, [userData]);
 
-  // Save cart and wishlist to localStorage
-  useEffect(() => {
-    localStorage.setItem('pharmacyCart', JSON.stringify(cart));
-  }, [cart]);
+  // Save cart to Firebase
+  const saveCartToFirebase = async (cartData) => {
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, cartData, 'pharmacy');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
+  };
 
-  useEffect(() => {
-    localStorage.setItem('pharmacyWishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+  // Save wishlist to Firebase
+  const saveWishlistToFirebase = async (wishlistData) => {
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, wishlistData, 'pharmacy_wishlist');
+      if (!result.success) {
+        console.error('Error saving wishlist to Firebase:', result.error);
+        toast.error('Failed to save wishlist. Please try again.');
+      }
+    }
+  };
 
   // Filter medicines based on search, category, and filters
   const filteredMedicines = medicines.filter(medicine => {
@@ -263,32 +289,38 @@ const Pharmacy = () => {
     }
   });
 
-  const addToCart = (medicine) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === medicine.id);
+  const addToCart = async (medicine) => {
+    const newCart = (() => {
+      const existing = cart.find(item => item.id === medicine.id);
       if (existing) {
         toast.success(`Updated ${medicine.name} quantity`, { icon: '🛒' });
-        return prev.map(item =>
+        return cart.map(item =>
           item.id === medicine.id 
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
       toast.success(`${medicine.name} added to cart!`, { icon: '✅' });
-      return [...prev, { ...medicine, quantity: 1 }];
-    });
+      return [...cart, { ...medicine, quantity: 1 }];
+    })();
+    
+    setCart(newCart);
+    await saveCartToFirebase(newCart);
   };
 
-  const toggleWishlist = (medicine) => {
-    setWishlist(prev => {
-      const isInWishlist = prev.find(item => item.id === medicine.id);
+  const toggleWishlist = async (medicine) => {
+    const newWishlist = (() => {
+      const isInWishlist = wishlist.find(item => item.id === medicine.id);
       if (isInWishlist) {
         toast.success('Removed from wishlist', { icon: '💔' });
-        return prev.filter(item => item.id !== medicine.id);
+        return wishlist.filter(item => item.id !== medicine.id);
       }
       toast.success('Added to wishlist!', { icon: '❤️' });
-      return [...prev, medicine];
-    });
+      return [...wishlist, medicine];
+    })();
+    
+    setWishlist(newWishlist);
+    await saveWishlistToFirebase(newWishlist);
   };
 
   const getCartItemsCount = () => {

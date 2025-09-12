@@ -28,6 +28,7 @@ import MedicineCart from './components/pharmacy/MedicineCart'
 import MedicineCategory from './components/pharmacy/MedicineCategory'
 import MedicineSearch from './components/pharmacy/MedicineSearch'
 import MyOrders from './components/pharmacy/MyOrders'
+import PharmacyPayment from './components/pharmacy/PharmacyPayment'
 import Profile from './components/profile/Profile'
 import PWAInstallPrompt from './components/pwa/PWAInstallPrompt'
 
@@ -188,6 +189,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyOrders />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/pharmacy/payment" 
+            element={
+              <ProtectedRoute>
+                <PharmacyPayment />
               </ProtectedRoute>
             } 
           />

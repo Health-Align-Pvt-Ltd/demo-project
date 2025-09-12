@@ -206,23 +206,35 @@ const MedicineOrder = () => {
     }
   }, [userData]);
 
-  // Check for navigation state to determine active tab
+  // Load cart from Firebase on component mount
   useEffect(() => {
     if (location.state?.tab) {
       setActiveTab(location.state.tab);
     }
     
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('medicineCart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  }, [location.state]);
+    // Load cart from Firebase
+    const loadCartFromFirebase = async () => {
+      if (userData?.uid) {
+        console.log('Loading cart from Firebase for user:', userData.uid);
+        const result = await firestoreService.getCartFromFirebase(userData.uid, 'medicine');
+        console.log('Cart load result:', result);
+        if (result.success) {
+          setCart(result.data || []);
+          console.log('Cart loaded:', result.data);
+        } else {
+          console.error('Error loading cart from Firebase:', result.error);
+          // Don't set empty cart if there's an error, keep existing cart
+          if (result.error !== 'Document not found') {
+            setCart([]);
+          }
+        }
+      }
+    };
+    
+    loadCartFromFirebase();
+  }, [location.state, userData?.uid]); // Changed dependency to userData?.uid
 
-  // Save cart to localStorage whenever cart changes
-  useEffect(() => {
-    localStorage.setItem('medicineCart', JSON.stringify(cart));
-  }, [cart]);
+
 
   const loadMedicineOrders = async () => {
     try {
@@ -248,55 +260,86 @@ const MedicineOrder = () => {
     return matchesSearch && matchesCategory && matchesPrescription && matchesStock;
   });
 
-  const addToCart = (medicine) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === medicine.id);
-      if (existing) {
-        const newQuantity = existing.quantity + 1;
-        if (newQuantity > medicine.stockCount) {
-          toast.error(`Only ${medicine.stockCount} items available in stock`);
-          return prev;
-        }
-        
-        toast.success(`Updated ${medicine.name} quantity to ${newQuantity}`, {
-          icon: '🛒',
-          duration: 2000
-        });
-        
-        return prev.map(item =>
-          item.id === medicine.id 
-            ? { ...item, quantity: newQuantity }
-            : item
-        );
+  const addToCart = async (medicine) => {
+    console.log('Adding to cart:', medicine.name);
+    console.log('Current cart before adding:', cart);
+    
+    const existingIndex = cart.findIndex(item => item.id === medicine.id);
+    let newCart;
+    
+    if (existingIndex >= 0) {
+      const newQuantity = cart[existingIndex].quantity + 1;
+      if (newQuantity > medicine.stockCount) {
+        toast.error(`Only ${medicine.stockCount} items available in stock`);
+        return;
       }
+      
+      newCart = cart.map(item =>
+        item.id === medicine.id 
+          ? { ...item, quantity: newQuantity }
+          : item
+      );
+      
+      toast.success(`Updated ${medicine.name} quantity to ${newQuantity}`, {
+        icon: '🛒',
+        duration: 2000
+      });
+    } else {
+      newCart = [...cart, { ...medicine, quantity: 1 }];
       
       toast.success(`${medicine.name} added to cart!`, {
         icon: '✅',
         duration: 2000
       });
-      
-      return [...prev, { ...medicine, quantity: 1 }];
-    });
+    }
+    
+    console.log('New cart after adding:', newCart);
+    
+    // Update local state
+    setCart(newCart);
+    
+    // Save to Firebase
+    if (userData?.uid) {
+      console.log('Saving cart to Firebase:', newCart);
+      const result = await firestoreService.saveCartToFirebase(userData.uid, newCart, 'medicine');
+      console.log('Save result:', result);
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
   };
 
-  const updateQuantity = (medicineId, newQuantity) => {
+  const updateQuantity = async (medicineId, newQuantity) => {
+    let newCart;
+    
     if (newQuantity === 0) {
-      setCart(prev => {
-        const removedItem = prev.find(item => item.id === medicineId);
-        if (removedItem) {
-          toast.success(`${removedItem.name} removed from cart`, {
-            icon: '🗑️',
-            duration: 1500
-          });
-        }
-        return prev.filter(item => item.id !== medicineId);
-      });
+      newCart = cart.filter(item => item.id !== medicineId);
+      const removedItem = cart.find(item => item.id === medicineId);
+      if (removedItem) {
+        toast.success(`${removedItem.name} removed from cart`, {
+          icon: '🗑️',
+          duration: 1500
+        });
+      }
     } else {
-      setCart(prev => prev.map(item =>
+      newCart = cart.map(item =>
         item.id === medicineId 
           ? { ...item, quantity: newQuantity }
           : item
-      ));
+      );
+    }
+    
+    // Update local state
+    setCart(newCart);
+    
+    // Save to Firebase
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, newCart, 'medicine');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to update cart. Please try again.');
+      }
     }
   };
 
@@ -371,7 +414,18 @@ const MedicineOrder = () => {
             <p className="text-sm text-gray-600">Order medicines with doorstep delivery</p>
           </div>
           <button
-            onClick={() => setActiveTab('cart')}
+            onClick={async () => {
+              setActiveTab('cart');
+              // Reload cart from Firebase when clicking cart button
+              if (userData?.uid) {
+                const result = await firestoreService.getCartFromFirebase(userData.uid, 'medicine');
+                if (result.success) {
+                  setCart(result.data);
+                } else {
+                  console.error('Error loading cart from Firebase:', result.error);
+                }
+              }
+            }}
             className="relative p-2 text-gray-600 hover:text-gray-900"
           >
             <ShoppingCart className="w-6 h-6" />
@@ -408,14 +462,33 @@ const MedicineOrder = () => {
               Upload Prescription
             </button>
             <button
-              onClick={() => setActiveTab('cart')}
-              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+              onClick={async () => {
+                setActiveTab('cart');
+                // Reload cart from Firebase when switching to cart tab
+                if (userData?.uid) {
+                  console.log('Reloading cart from Firebase...');
+                  const result = await firestoreService.getCartFromFirebase(userData.uid, 'medicine');
+                  console.log('Cart reload result:', result);
+                  if (result.success) {
+                    setCart(result.data || []);
+                    console.log('Cart reloaded:', result.data);
+                  } else {
+                    console.error('Error reloading cart from Firebase:', result.error);
+                  }
+                }
+              }}
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap relative ${
                 activeTab === 'cart'
                   ? 'border-green-500 text-green-600'
                   : 'border-transparent text-gray-500'
               }`}
             >
-              Cart ({getItemsCount()})
+              Cart
+              {getItemsCount() > 0 && (
+                <span className="ml-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                  {getItemsCount()}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('orders')}
@@ -558,7 +631,10 @@ const MedicineOrder = () => {
                       <span>Details</span>
                     </button>
                     <button
-                      onClick={() => addToCart(medicine)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(medicine);
+                      }}
                       disabled={!medicine.inStock}
                       className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1 text-sm"
                     >
@@ -633,6 +709,32 @@ const MedicineOrder = () => {
         {activeTab === 'cart' && (
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Shopping Cart</h2>
+            
+            {/* Debug Info */}
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+              <p><strong>Debug Info:</strong></p>
+              <p>User ID: {userData?.uid || 'Not logged in'}</p>
+              <p>Cart length: {cart.length}</p>
+              <p>Cart items: {JSON.stringify(cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity })))}</p>
+              <button
+                onClick={async () => {
+                  if (userData?.uid) {
+                    console.log('Manual cart reload...');
+                    const result = await firestoreService.getCartFromFirebase(userData.uid, 'medicine');
+                    console.log('Manual reload result:', result);
+                    if (result.success) {
+                      setCart(result.data || []);
+                      toast.success('Cart reloaded from Firebase');
+                    } else {
+                      toast.error('Failed to reload cart');
+                    }
+                  }
+                }}
+                className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+              >
+                Reload Cart from Firebase
+              </button>
+            </div>
             
             {cart.length === 0 ? (
               <div className="text-center py-12">

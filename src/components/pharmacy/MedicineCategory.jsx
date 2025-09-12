@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
 import toast from 'react-hot-toast';
 import { 
@@ -226,12 +227,18 @@ const MedicineCategory = () => {
     setMedicines(categoryMedicines);
     setFilteredMedicines(categoryMedicines);
 
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('pharmacyCart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  }, [categoryId]);
+    // Load cart from Firebase
+    const loadCart = async () => {
+      if (userData?.uid) {
+        const result = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
+        if (result.success) {
+          setCart(result.data);
+        }
+      }
+    };
+    
+    loadCart();
+  }, [categoryId, userData]);
 
   useEffect(() => {
     // Filter and sort medicines
@@ -271,7 +278,7 @@ const MedicineCategory = () => {
     setFilteredMedicines(filtered);
   }, [medicines, searchTerm, sortBy, filters]);
 
-  const addToCart = (medicine) => {
+  const addToCart = async (medicine) => {
     const updatedCart = [...cart];
     const existingItem = updatedCart.find(item => item.id === medicine.id);
     
@@ -290,7 +297,15 @@ const MedicineCategory = () => {
     }
     
     setCart(updatedCart);
-    localStorage.setItem('pharmacyCart', JSON.stringify(updatedCart));
+    
+    // Save to Firebase
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, updatedCart, 'pharmacy');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
   };
 
   const getCartItemsCount = () => {

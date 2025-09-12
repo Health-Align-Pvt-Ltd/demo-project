@@ -7,6 +7,7 @@ import {
   getDoc, 
   updateDoc, 
   deleteDoc, 
+  setDoc, 
   query, 
   where, 
   orderBy
@@ -14,6 +15,241 @@ import {
 import { db } from './config';
 
 export const firestoreService = {
+  // Cart operations
+  async saveCartToFirebase(userId, cartItems, cartType = 'medicine') {
+    try {
+      const cartRef = doc(db, 'cart', `${userId}_${cartType}`);
+      await setDoc(cartRef, {
+        userId,
+        cartType,
+        items: cartItems,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving cart to Firebase:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getCartFromFirebase(userId, cartType = 'medicine') {
+    try {
+      const cartRef = doc(db, 'cart', `${userId}_${cartType}`);
+      const cartSnap = await getDoc(cartRef);
+      
+      if (cartSnap.exists()) {
+        const cartData = cartSnap.data();
+        return { success: true, data: cartData.items || [] };
+      } else {
+        return { success: true, data: [] };
+      }
+    } catch (error) {
+      console.error('Error getting cart from Firebase:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async clearCartFromFirebase(userId, cartType = 'medicine') {
+    try {
+      const cartRef = doc(db, 'cart', `${userId}_${cartType}`);
+      await deleteDoc(cartRef);
+      return { success: true };
+    } catch (error) {
+      console.error('Error clearing cart from Firebase:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Products operations
+  async getProducts() {
+    try {
+      const productsRef = collection(db, 'products');
+      const snapshot = await getDocs(productsRef);
+      const products = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: products };
+    } catch (error) {
+      console.error('Error getting products:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async addProduct(productData) {
+    try {
+      const docRef = await addDoc(collection(db, 'products'), {
+        ...productData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('Error adding product:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Product Categories operations
+  async getProductCategories() {
+    try {
+      const categoriesRef = collection(db, 'productCategories');
+      const snapshot = await getDocs(categoriesRef);
+      const categories = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: categories };
+    } catch (error) {
+      console.error('Error getting product categories:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Diseases operations
+  async getDiseases() {
+    try {
+      const diseasesRef = collection(db, 'diseases');
+      const snapshot = await getDocs(diseasesRef);
+      const diseases = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: diseases };
+    } catch (error) {
+      console.error('Error getting diseases:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Pharmacy operations
+  async getPharmacies() {
+    try {
+      const pharmaciesRef = collection(db, 'pharmacy');
+      const snapshot = await getDocs(pharmaciesRef);
+      const pharmacies = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: pharmacies };
+    } catch (error) {
+      console.error('Error getting pharmacies:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Delivery Status operations
+  async updateDeliveryStatus(orderId, status, location = null) {
+    try {
+      const statusRef = doc(db, 'delivery_status', orderId);
+      await setDoc(statusRef, {
+        orderId,
+        status,
+        location,
+        updatedAt: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      }, { merge: true });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating delivery status:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getDeliveryStatus(orderId) {
+    try {
+      const statusRef = doc(db, 'delivery_status', orderId);
+      const statusSnap = await getDoc(statusRef);
+      
+      if (statusSnap.exists()) {
+        return { success: true, data: statusSnap.data() };
+      } else {
+        return { success: false, error: 'Delivery status not found' };
+      }
+    } catch (error) {
+      console.error('Error getting delivery status:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Ambulance operations
+  async getAmbulances() {
+    try {
+      const ambulancesRef = collection(db, 'ambulance');
+      const snapshot = await getDocs(ambulancesRef);
+      const ambulances = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: ambulances };
+    } catch (error) {
+      console.error('Error getting ambulances:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Ambulance Bookings operations
+  async createAmbulanceBooking(bookingData) {
+    try {
+      const docRef = await addDoc(collection(db, 'ambulance_bookings'), {
+        ...bookingData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: bookingData.status || 'pending'
+      });
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('Error creating ambulance booking:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getAmbulanceBookings(userId) {
+    try {
+      const bookingsRef = collection(db, 'ambulance_bookings');
+      const q = query(bookingsRef, where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      const bookings = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: bookings };
+    } catch (error) {
+      console.error('Error getting ambulance bookings:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  // Ambulance Drivers operations
+  async getAmbulanceDrivers() {
+    try {
+      const driversRef = collection(db, 'ambulance_drivers');
+      const snapshot = await getDocs(driversRef);
+      const drivers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { success: true, data: drivers };
+    } catch (error) {
+      console.error('Error getting ambulance drivers:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async updateDriverLocation(driverId, location) {
+    try {
+      const driverRef = doc(db, 'ambulance_drivers', driverId);
+      await updateDoc(driverRef, {
+        location,
+        lastLocationUpdate: new Date().toISOString()
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating driver location:', error);
+      return { success: false, error: error.message };
+    }
+  },
   // Appointments
   async bookAppointment(appointmentData) {
     try {
@@ -101,6 +337,131 @@ export const firestoreService = {
     }
   },
 
+  // Pharmacy orders (separate from medicine orders)
+  async createPharmacyOrder(orderData) {
+    try {
+      const docRef = await addDoc(collection(db, 'pharmacyOrders'), {
+        ...orderData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: orderData.status || 'confirmed'
+      });
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('Error creating pharmacy order:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getPharmacyOrders(userId) {
+    try {
+      console.log('Firebase getPharmacyOrders called with userId:', userId);
+      
+      // Using simple query without orderBy to avoid index requirement
+      const q = query(
+        collection(db, 'pharmacyOrders'),
+        where('userId', '==', userId)
+      );
+      
+      console.log('Executing Firebase query for pharmacyOrders...');
+      const querySnapshot = await getDocs(q);
+      console.log('Firebase query completed, processing results...');
+      
+      const orders = [];
+      querySnapshot.forEach((doc) => {
+        orders.push({ id: doc.id, ...doc.data() });
+      });
+      
+      console.log('Raw orders from Firebase:', orders.length, 'documents');
+      
+      // Sort orders by createdAt on the client side to avoid index requirement
+      orders.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // descending order (newest first)
+      });
+      
+      console.log('Orders sorted on client side');
+      return { success: true, data: orders };
+    } catch (error) {
+      console.error('Error getting pharmacy orders:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async updatePharmacyOrder(orderId, updates) {
+    try {
+      await updateDoc(doc(db, 'pharmacyOrders', orderId), {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating pharmacy order:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Test function to create a sample order
+  async createTestOrder(userId) {
+    try {
+      const testOrder = {
+        userId: userId,
+        items: [
+          {
+            id: 'test-1',
+            name: 'Test Medicine',
+            quantity: 2,
+            price: 50.00
+          }
+        ],
+        totalAmount: 100.00,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const result = await this.createPharmacyOrder(testOrder);
+      return result;
+    } catch (error) {
+      console.error('Error creating test order:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Pharmacy order with payment processing
+  async createPharmacyOrderWithPayment(orderData, paymentData) {
+    try {
+      // Create pharmacy order
+      const orderResult = await this.createPharmacyOrder(orderData);
+      if (!orderResult.success) {
+        throw new Error('Failed to create pharmacy order');
+      }
+
+      // Create payment transaction
+      const transactionResult = await this.createTransaction({
+        ...paymentData,
+        orderId: orderResult.id,
+        userId: orderData.userId,
+        type: 'pharmacy_order',
+        status: 'completed'
+      });
+      
+      if (!transactionResult.success) {
+        console.warn('Failed to create transaction record, but order created');
+      }
+
+      return { 
+        success: true, 
+        orderId: orderResult.id,
+        transactionId: transactionResult.id
+      };
+    } catch (error) {
+      console.error('Error in pharmacy order with payment:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Medicine orders
   async createMedicineOrder(orderData) {
     try {
@@ -121,13 +482,19 @@ export const firestoreService = {
     try {
       const q = query(
         collection(db, 'medicineOrders'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
       const querySnapshot = await getDocs(q);
       const orders = [];
       querySnapshot.forEach((doc) => {
         orders.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort orders by createdAt on the client side to avoid index requirement
+      orders.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // descending order (newest first)
       });
       
       return { success: true, data: orders };
@@ -244,13 +611,19 @@ export const firestoreService = {
     try {
       const q = query(
         collection(db, 'prescriptions'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
       const querySnapshot = await getDocs(q);
       const prescriptions = [];
       querySnapshot.forEach((doc) => {
         prescriptions.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort prescriptions by createdAt on the client side to avoid index requirement
+      prescriptions.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // descending order (newest first)
       });
       
       return { success: true, data: prescriptions };
@@ -539,6 +912,178 @@ export const firestoreService = {
       return { success: true };
     } catch (error) {
       console.error(`Error deleting document from ${collectionName}:`, error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Helper function to initialize Firebase collections with sample data
+  async initializeCollections() {
+    try {
+      // Sample products data
+      const sampleProducts = [
+        {
+          name: 'Paracetamol 500mg',
+          genericName: 'Acetaminophen',
+          brand: 'Generic',
+          strength: '500mg',
+          form: 'Tablet',
+          price: 45.50,
+          originalPrice: 52.00,
+          category: 'pain-relief',
+          inStock: true,
+          stockCount: 150,
+          requiresPrescription: false,
+          rating: 4.5,
+          reviewsCount: 1205
+        },
+        {
+          name: 'Vitamin D3',
+          genericName: 'Cholecalciferol',
+          brand: 'HealthKart',
+          strength: '60000 IU',
+          form: 'Capsule',
+          price: 156.99,
+          originalPrice: 180.00,
+          category: 'vitamins',
+          inStock: true,
+          stockCount: 89,
+          requiresPrescription: false,
+          rating: 4.6,
+          reviewsCount: 1234
+        }
+      ];
+
+      // Sample product categories
+      const sampleCategories = [
+        {
+          id: 'pain-relief',
+          name: 'Pain Relief',
+          description: 'Medicines for pain management and relief',
+          icon: '💊'
+        },
+        {
+          id: 'vitamins',
+          name: 'Vitamins & Supplements',
+          description: 'Essential vitamins and nutritional supplements',
+          icon: '🌿'
+        },
+        {
+          id: 'antibiotics',
+          name: 'Antibiotics',
+          description: 'Prescription antibiotics for infections',
+          icon: '🛡️'
+        }
+      ];
+
+      // Sample diseases data
+      const sampleDiseases = [
+        {
+          name: 'Diabetes',
+          category: 'Endocrine',
+          description: 'A group of metabolic disorders characterized by high blood sugar',
+          symptoms: ['Frequent urination', 'Increased thirst', 'Weight loss'],
+          medicines: ['Metformin', 'Insulin', 'Glipizide']
+        },
+        {
+          name: 'Hypertension',
+          category: 'Cardiovascular',
+          description: 'High blood pressure condition',
+          symptoms: ['Headaches', 'Dizziness', 'Chest pain'],
+          medicines: ['Amlodipine', 'Losartan', 'Hydrochlorothiazide']
+        }
+      ];
+
+      // Sample pharmacy data
+      const samplePharmacies = [
+        {
+          name: 'HealthAlign Main Pharmacy',
+          address: '123 Main Street, Health District',
+          phone: '+91 1800-123-4567',
+          rating: 4.8,
+          isOpen: true,
+          workingHours: '24/7',
+          services: ['Prescription', 'OTC Medicines', 'Health Consultation']
+        },
+        {
+          name: 'HealthAlign Express',
+          address: '456 Express Lane, Medical Hub',
+          phone: '+91 1800-123-4568',
+          rating: 4.6,
+          isOpen: true,
+          workingHours: '6:00 AM - 10:00 PM',
+          services: ['Quick Delivery', 'Emergency Medicines']
+        }
+      ];
+
+      // Sample ambulance data
+      const sampleAmbulances = [
+        {
+          vehicleNumber: 'AMB-001',
+          type: 'Advanced Life Support',
+          location: { lat: 28.6139, lng: 77.2090 },
+          isAvailable: true,
+          rating: 4.9,
+          equipment: ['Ventilator', 'Defibrillator', 'Oxygen Support'],
+          contactNumber: '+91 9876543210'
+        },
+        {
+          vehicleNumber: 'AMB-002',
+          type: 'Basic Life Support',
+          location: { lat: 28.7041, lng: 77.1025 },
+          isAvailable: true,
+          rating: 4.7,
+          equipment: ['First Aid Kit', 'Oxygen Support', 'Stretcher'],
+          contactNumber: '+91 9876543211'
+        }
+      ];
+
+      // Sample ambulance drivers
+      const sampleDrivers = [
+        {
+          name: 'Rajesh Kumar',
+          licenseNumber: 'DL123456789',
+          phone: '+91 9876543210',
+          experience: '5 years',
+          rating: 4.8,
+          currentLocation: { lat: 28.6139, lng: 77.2090 },
+          ambulanceId: 'AMB-001',
+          isOnDuty: true
+        },
+        {
+          name: 'Suresh Singh',
+          licenseNumber: 'DL987654321',
+          phone: '+91 9876543211',
+          experience: '8 years',
+          rating: 4.6,
+          currentLocation: { lat: 28.7041, lng: 77.1025 },
+          ambulanceId: 'AMB-002',
+          isOnDuty: true
+        }
+      ];
+
+      // Initialize collections (only if they don't exist)
+      console.log('Initializing Firebase collections with sample data...');
+
+      // Add sample data to collections
+      const collections = [
+        { name: 'products', data: sampleProducts },
+        { name: 'productCategories', data: sampleCategories },
+        { name: 'diseases', data: sampleDiseases },
+        { name: 'pharmacy', data: samplePharmacies },
+        { name: 'ambulance', data: sampleAmbulances },
+        { name: 'ambulance_drivers', data: sampleDrivers }
+      ];
+
+      for (const col of collections) {
+        for (const item of col.data) {
+          await this.create(col.name, item);
+        }
+      }
+
+      console.log('Firebase collections initialized successfully!');
+      return { success: true, message: 'Collections initialized' };
+    } catch (error) {
+      console.error('Error initializing collections:', error);
       return { success: false, error: error.message };
     }
   }

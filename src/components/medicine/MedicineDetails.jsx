@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { firestoreService } from '../../firebase/firestoreService';
 import PageLayout from '../common/PageLayout';
 import toast from 'react-hot-toast';
 import { 
@@ -115,23 +116,35 @@ const MedicineDetails = () => {
     }
   ];
 
-  // Load medicine data and cart from localStorage
+  // Load medicine data and cart from Firebase
   useEffect(() => {
     const foundMedicine = medicines.find(med => med.id === medicineId);
     setMedicine(foundMedicine);
     setLoading(false);
 
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('medicineCart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  }, [medicineId]);
+    // Load cart from Firebase
+    const loadCart = async () => {
+      if (userData?.uid) {
+        const result = await firestoreService.getCartFromFirebase(userData.uid, 'medicine');
+        if (result.success) {
+          setCart(result.data);
+        }
+      }
+    };
+    
+    loadCart();
+  }, [medicineId, userData]);
 
-  // Save cart to localStorage whenever cart changes
-  useEffect(() => {
-    localStorage.setItem('medicineCart', JSON.stringify(cart));
-  }, [cart]);
+  // Save cart to Firebase
+  const saveCartToFirebase = async (cartData) => {
+    if (userData?.uid) {
+      const result = await firestoreService.saveCartToFirebase(userData.uid, cartData, 'medicine');
+      if (!result.success) {
+        console.error('Error saving cart to Firebase:', result.error);
+        toast.error('Failed to save cart. Please try again.');
+      }
+    }
+  };
 
   const handleQuantityChange = (delta) => {
     setQuantity(prev => {
@@ -151,14 +164,14 @@ const MedicineDetails = () => {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      setCart(prev => {
-        const existingItem = prev.find(item => item.id === medicine.id);
+      const newCart = (() => {
+        const existingItem = cart.find(item => item.id === medicine.id);
         
         if (existingItem) {
           const newQuantity = existingItem.quantity + quantity;
           if (newQuantity > medicine.stockCount) {
             toast.error(`Only ${medicine.stockCount} items available in stock`);
-            return prev;
+            return cart;
           }
           
           toast.success(`Updated quantity to ${newQuantity}`, {
@@ -166,7 +179,7 @@ const MedicineDetails = () => {
             duration: 2000
           });
           
-          return prev.map(item =>
+          return cart.map(item =>
             item.id === medicine.id 
               ? { ...item, quantity: newQuantity }
               : item
@@ -177,9 +190,12 @@ const MedicineDetails = () => {
             duration: 2000
           });
           
-          return [...prev, { ...medicine, quantity }];
+          return [...cart, { ...medicine, quantity }];
         }
-      });
+      })();
+      
+      setCart(newCart);
+      await saveCartToFirebase(newCart);
 
       // Reset quantity to 1 after adding
       setQuantity(1);
@@ -192,23 +208,24 @@ const MedicineDetails = () => {
     }
   };
 
-  const updateCartQuantity = (medicineId, newQuantity) => {
+  const updateCartQuantity = async (medicineId, newQuantity) => {
+    let newCart;
     if (newQuantity === 0) {
-      setCart(prev => {
-        const updatedCart = prev.filter(item => item.id !== medicineId);
-        toast.success('Item removed from cart', {
-          icon: '🗑️',
-          duration: 1500
-        });
-        return updatedCart;
+      newCart = cart.filter(item => item.id !== medicineId);
+      toast.success('Item removed from cart', {
+        icon: '🗑️',
+        duration: 1500
       });
     } else {
-      setCart(prev => prev.map(item =>
+      newCart = cart.map(item =>
         item.id === medicineId 
           ? { ...item, quantity: newQuantity }
           : item
-      ));
+      );
     }
+    
+    setCart(newCart);
+    await saveCartToFirebase(newCart);
   };
 
   const getCartTotal = () => {

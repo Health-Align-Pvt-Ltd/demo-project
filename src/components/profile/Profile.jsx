@@ -240,8 +240,20 @@ const Profile = () => {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      const result = await updateProfile(profileData);
+      // Check if address has changed
+      const addressChanged = profileData.address !== userData?.address;
+      
+      // Save profile data (excluding address for now)
+      const profileUpdateData = { ...profileData };
+      delete profileUpdateData.address;
+      
+      const result = await updateProfile(profileUpdateData);
+      
       if (result.success) {
+        // If address changed, save it separately
+        if (addressChanged && profileData.address) {
+          await updateAddress(profileData.address);
+        }
         setEditing(false);
       }
     } catch (error) {
