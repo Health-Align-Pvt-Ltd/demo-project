@@ -38,14 +38,10 @@ const MedicineCart = () => {
   useEffect(() => {
     const loadCartFromFirebase = async () => {
       if (userData?.uid) {
-        console.log('Loading pharmacy cart from Firebase for user:', userData.uid);
         const result = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
-        console.log('Pharmacy cart load result:', result);
         if (result.success) {
           setCart(result.data || []);
-          console.log('Pharmacy cart loaded:', result.data);
         } else {
-          console.error('Error loading cart from Firebase:', result.error);
           // Only set empty cart if there's a real error, not if document doesn't exist
           if (result.error !== 'Document not found') {
             setCart([]);
@@ -63,9 +59,7 @@ const MedicineCart = () => {
     const saveCartToFirebase = async () => {
       // Only save if cart has been loaded and user is authenticated
       if (userData?.uid && cartLoaded) {
-        console.log('Saving pharmacy cart to Firebase:', cart);
         const result = await firestoreService.saveCartToFirebase(userData.uid, cart, 'pharmacy');
-        console.log('Pharmacy cart save result:', result);
         if (!result.success) {
           console.error('Error saving cart to Firebase:', result.error);
         }
@@ -203,32 +197,6 @@ const MedicineCart = () => {
         textColor="text-white"
       >
         <div className="text-center py-20">
-          {/* Debug Info for Empty Cart */}
-          <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-left">
-            <p><strong>Debug Info:</strong></p>
-            <p>User ID: {userData?.uid || 'Not logged in'}</p>
-            <p>Cart Loaded: {cartLoaded ? 'Yes' : 'No'}</p>
-            <p>Cart length: {cart.length}</p>
-            <button
-              onClick={async () => {
-                if (userData?.uid) {
-                  console.log('Manual pharmacy cart reload...');
-                  const result = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
-                  console.log('Manual reload result:', result);
-                  if (result.success) {
-                    setCart(result.data || []);
-                    toast.success('Pharmacy cart reloaded from Firebase');
-                  } else {
-                    toast.error('Failed to reload pharmacy cart');
-                  }
-                }
-              }}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-            >
-              Reload Cart from Firebase
-            </button>
-          </div>
-          
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="w-12 h-12 text-gray-400" />
           </div>
@@ -262,32 +230,6 @@ const MedicineCart = () => {
       }
     >
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Debug Info Panel */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm">
-          <p><strong>Debug Info:</strong></p>
-          <p>User ID: {userData?.uid || 'Not logged in'}</p>
-          <p>Cart Loaded: {cartLoaded ? 'Yes' : 'No'}</p>
-          <p>Cart length: {cart.length}</p>
-          <p>Cart items: {JSON.stringify(cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity })))}</p>
-          <button
-            onClick={async () => {
-              if (userData?.uid) {
-                console.log('Manual pharmacy cart reload...');
-                const result = await firestoreService.getCartFromFirebase(userData.uid, 'pharmacy');
-                console.log('Manual reload result:', result);
-                if (result.success) {
-                  setCart(result.data || []);
-                  toast.success('Pharmacy cart reloaded from Firebase');
-                } else {
-                  toast.error('Failed to reload pharmacy cart');
-                }
-              }
-            }}
-            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-          >
-            Reload Cart from Firebase
-          </button>
-        </div>
         {/* Cart Items */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">

@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange(async (user) => {
@@ -24,9 +25,15 @@ export const AuthProvider = ({ children }) => {
         setUser(user);
         const userInfo = await authService.getCurrentUserData();
         setUserData(userInfo);
+        
+        // Check if user is admin
+        const adminEmail = 'kanaishil501@gmail.com';
+        const isAdminUser = user.email === adminEmail || userInfo?.userType === 'admin';
+        setIsAdmin(isAdminUser);
       } else {
         setUser(null);
         setUserData(null);
+        setIsAdmin(false);
       }
       setLoading(false);
     });
@@ -223,6 +230,7 @@ export const AuthProvider = ({ children }) => {
     user,
     userData,
     loading,
+    isAdmin,
     loginWithPhone,
     registerWithPhone,
     verifyOTP,

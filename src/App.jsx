@@ -3,6 +3,7 @@ import { Route, Routes, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
+import AdminProtectedRoute from './components/admin/AdminProtectedRoute'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
 import Dashboard from './components/dashboard/Dashboard'
@@ -31,6 +32,11 @@ import MyOrders from './components/pharmacy/MyOrders'
 import PharmacyPayment from './components/pharmacy/PharmacyPayment'
 import Profile from './components/profile/Profile'
 import PWAInstallPrompt from './components/pwa/PWAInstallPrompt'
+// Admin Components
+import AdminDashboard from './components/admin/AdminDashboard'
+import AdminManagement from './components/admin/AdminManagement'
+import AdminForm from './components/admin/AdminForm'
+import AdminProfile from './components/admin/AdminProfile'
 
 function App() {
   return (
@@ -52,6 +58,40 @@ function App() {
               <ProtectedRoute requireAuth={false}>
                 <Register />
               </ProtectedRoute>
+            } 
+          />
+          
+          {/* Admin Routes */}
+          <Route 
+            path="/admin" 
+            element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/profile" 
+            element={
+              <AdminProtectedRoute>
+                <AdminProfile />
+              </AdminProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/:entityType/:action" 
+            element={
+              <AdminProtectedRoute>
+                <AdminManagement />
+              </AdminProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/:entityType/add-new/form" 
+            element={
+              <AdminProtectedRoute>
+                <AdminForm />
+              </AdminProtectedRoute>
             } 
           />
           

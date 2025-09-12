@@ -119,11 +119,15 @@ export const authService = {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
         // Create new user profile
+        // Check if this is the admin user
+        const adminEmail = 'kanaishil501@gmail.com';
+        const userType = user.email === adminEmail ? 'admin' : 'patient';
+        
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           phoneNumber: user.phoneNumber,
           name: '',
-          userType: 'patient',
+          userType: userType,
           dateOfBirth: '',
           gender: '',
           address: '',
@@ -178,12 +182,16 @@ export const authService = {
         });
       }
 
+      // Check if this is the admin user
+      const adminEmail = 'kanaishil501@gmail.com';
+      const userType = user.email === adminEmail ? 'admin' : (userData.userType || 'patient');
+
       // Save user data to Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         phoneNumber: user.phoneNumber,
         name: userData.name || '',
-        userType: userData.userType || 'patient',
+        userType: userType,
         dateOfBirth: userData.dateOfBirth || '',
         gender: userData.gender || '',
         address: userData.address || '',
@@ -231,13 +239,17 @@ export const authService = {
       // Check if user exists in database
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
+        // Check if this is the admin user
+        const adminEmail = 'kanaishil501@gmail.com';
+        const userType = user.email === adminEmail ? 'admin' : 'patient';
+        
         // Create new user profile with Google data
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
           name: user.displayName || '',
           photoURL: user.photoURL || '',
-          userType: 'patient', // Default to patient
+          userType: userType,
           dateOfBirth: '',
           gender: '',
           address: '',
@@ -277,13 +289,17 @@ export const authService = {
         return { success: false, error: 'Account already exists. Please sign in instead.' };
       }
       
+      // Check if this is the admin user
+      const adminEmail = 'kanaishil501@gmail.com';
+      const userType = user.email === adminEmail ? 'admin' : 'patient';
+      
       // Create new user profile with Google data
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
         name: user.displayName || '',
         photoURL: user.photoURL || '',
-        userType: 'patient', // Default to patient, can be updated later
+        userType: userType,
         dateOfBirth: '',
         gender: '',
         address: '',

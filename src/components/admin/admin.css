@@ -1,0 +1,61 @@
+/* Admin Panel Custom Styles */
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  width: 256px;
+  background-color: #1f2937;
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 256px;
+}
+
+.admin-header {
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 64px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 256px;
+  z-index: 10;
+}
+
+.admin-content {
+  margin-top: 64px;
+  padding: 24px;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-approved {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-pending {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+.status-rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
