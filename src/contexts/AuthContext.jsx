@@ -202,6 +202,8 @@ export const AuthProvider = ({ children }) => {
   const getAddressFromCookie = () => {
     return authService.getAddressFromCookie();
   };
+
+  const resetPassword = async (email) => {
     try {
       const result = await authService.resetPassword(email);
       if (result.success) {

@@ -151,7 +151,13 @@ const PharmacyPayment = () => {
       return;
     }
 
-    if (!deliveryAddress.street || !deliveryAddress.city || !deliveryAddress.pincode) {
+    // Check if delivery address is provided
+    const fullDeliveryAddress = deliveryAddressFromCart || 
+      (deliveryAddress.street && deliveryAddress.city && deliveryAddress.pincode ? 
+        `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.pincode}` : 
+        '');
+        
+    if (!fullDeliveryAddress) {
       toast.error('Please provide complete delivery address');
       return;
     }
@@ -181,7 +187,7 @@ const PharmacyPayment = () => {
         totalSavings,
         itemsCount,
         paymentMethod: selectedPaymentMethod,
-        deliveryAddress,
+        deliveryAddress: fullDeliveryAddress,
         prescriptionFile: prescriptionFile ? prescriptionFile.name : null,
         status: 'confirmed',
         orderDate: new Date().toISOString(),
@@ -192,7 +198,7 @@ const PharmacyPayment = () => {
           phone: '+91 1800-123-4567'
         },
         delivery: {
-          address: `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.pincode}`,
+          address: fullDeliveryAddress,
           type: 'standard',
           charges: 0
         },
@@ -228,10 +234,14 @@ const PharmacyPayment = () => {
         // Clear cart from Firebase
         if (userData?.uid) {
           await firestoreService.clearCartFromFirebase(userData.uid, 'pharmacy');
+          
+          // Save delivery address to user profile in Firebase
+          if (fullDeliveryAddress && userData.uid) {
+            await firestoreService.update('users', userData.uid, {
+              address: fullDeliveryAddress
+            });
+          }
         }
-        
-        // Save delivery address to user profile in Firebase (optional)
-        // You could save this to a user's addresses collection
         
         toast.success('Order placed successfully!', {
           icon: '🎉',
