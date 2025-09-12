@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { X, MapPin, CheckCircle, Navigation, Search } from 'lucide-react';
+import { makeProxiedRequest } from '../../services/proxyService';
 
 // Fix Leaflet default markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -124,14 +125,9 @@ const MapLocationPicker = ({
     
     // Try to get address for clicked location
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLocation.lat}&lon=${clickedLocation.lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'HealthAlign/1.0 (https://healthalign.com)',
-            'Referer': window.location.origin
-          }
-        }
+      // Use proxy service for external API calls
+      const response = await makeProxiedRequest(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLocation.lat}&lon=${clickedLocation.lng}&zoom=18&addressdetails=1`
       );
       
       if (response.ok) {
@@ -176,14 +172,9 @@ const MapLocationPicker = ({
           
           // Try to get address for current location immediately
           try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLoc.lat}&lon=${currentLoc.lng}&zoom=18&addressdetails=1`,
-              {
-                headers: {
-                  'User-Agent': 'HealthAlign/1.0 (https://healthalign.com)',
-                  'Referer': window.location.origin
-                }
-              }
+            // Use proxy service for external API calls
+            const response = await makeProxiedRequest(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLoc.lat}&lon=${currentLoc.lng}&zoom=18&addressdetails=1`
             );
             
             if (response.ok) {
@@ -241,28 +232,17 @@ const MapLocationPicker = ({
 
     setIsSearching(true);
     try {
-      // Add user agent and referer to avoid 403 errors
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1&countrycodes=in&extratags=1&namedetails=1`,
-        {
-          headers: {
-            'User-Agent': 'HealthAlign/1.0 (https://healthalign.com)',
-            'Referer': window.location.origin
-          }
-        }
+      // Use proxy service for external API calls
+      const response = await makeProxiedRequest(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1&countrycodes=in&extratags=1&namedetails=1`
       );
       
       if (!response.ok) {
         if (response.status === 403) {
           console.warn('Nominatim API rate limit reached, using fallback');
           // Fallback to a simpler search without country restrictions
-          const fallbackResponse = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' India')}&limit=5`,
-            {
-              headers: {
-                'User-Agent': 'HealthAlign/1.0',
-              }
-            }
+          const fallbackResponse = await makeProxiedRequest(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' India')}&limit=5`
           );
           
           if (fallbackResponse.ok) {
@@ -366,14 +346,9 @@ const MapLocationPicker = ({
         if (!selectedAddress || selectedAddress === 'Current Location' || selectedAddress.includes('Location at')) {
           console.log('Fetching address for coordinates:', selectedLocation);
           try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLocation.lat}&lon=${selectedLocation.lng}&zoom=18&addressdetails=1`,
-              {
-                headers: {
-                  'User-Agent': 'HealthAlign/1.0 (https://healthalign.com)',
-                  'Referer': window.location.origin
-                }
-              }
+            // Use proxy service for external API calls
+            const response = await makeProxiedRequest(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLocation.lat}&lon=${selectedLocation.lng}&zoom=18&addressdetails=1`
             );
             
             if (response.ok) {

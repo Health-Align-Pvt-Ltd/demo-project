@@ -46,6 +46,12 @@ const Pharmacy = () => {
     prescription: 'all',
     discount: false
   });
+  const [medicines, setMedicines] = useState([]); // State to hold medicines from Firebase
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState(null);
+  const itemsPerPage = 20;
 
   // Medicine Categories
   const categories = [
@@ -57,160 +63,6 @@ const Pharmacy = () => {
     { id: 'baby-care', name: 'Baby Care', icon: Heart, count: 18 },
     { id: 'diabetes', name: 'Diabetes Care', icon: Pill, count: 15 },
     { id: 'ayurveda', name: 'Ayurveda', icon: Pill, count: 12 }
-  ];
-
-  // Sample medicines data with e-commerce style information
-  const medicines = [
-    {
-      id: '1',
-      name: 'Dolo 650 Tablet',
-      genericName: 'Paracetamol',
-      brand: 'Micro Labs',
-      strength: '650mg',
-      form: 'Tablet',
-      pack: 'Strip of 15 tablets',
-      price: 32.50,
-      originalPrice: 45.00,
-      discount: 28,
-      inStock: true,
-      stockCount: 150,
-      requiresPrescription: false,
-      category: 'pain-relief',
-      rating: 4.4,
-      reviewsCount: 2847,
-      fastDelivery: true,
-      images: ['/api/placeholder/150/150'],
-      description: 'Effective fever and pain relief',
-      manufacturer: 'Micro Labs Ltd',
-      tags: ['Fever', 'Pain Relief', 'Headache'],
-      isBestseller: true,
-      deliveryTime: '2-4 hours'
-    },
-    {
-      id: '2',
-      name: 'Vitamin D3 60K',
-      genericName: 'Cholecalciferol',
-      brand: 'HealthKart',
-      strength: '60000 IU',
-      form: 'Capsule',
-      pack: 'Strip of 8 capsules',
-      price: 156.99,
-      originalPrice: 180.00,
-      discount: 13,
-      inStock: true,
-      stockCount: 89,
-      requiresPrescription: false,
-      category: 'vitamins',
-      rating: 4.6,
-      reviewsCount: 1234,
-      fastDelivery: true,
-      images: ['/api/placeholder/150/150'],
-      description: 'Supports bone health and immunity',
-      manufacturer: 'HealthKart HerbalLife',
-      tags: ['Vitamin D', 'Bone Health', 'Immunity'],
-      isBestseller: false,
-      deliveryTime: '1-2 days'
-    },
-    {
-      id: '3',
-      name: 'Amoxicillin 500mg',
-      genericName: 'Amoxicillin',
-      brand: 'Cipla',
-      strength: '500mg',
-      form: 'Capsule',
-      pack: 'Strip of 10 capsules',
-      price: 89.99,
-      originalPrice: 110.00,
-      discount: 18,
-      inStock: true,
-      stockCount: 45,
-      requiresPrescription: true,
-      category: 'antibiotics',
-      rating: 4.2,
-      reviewsCount: 856,
-      fastDelivery: false,
-      images: ['/api/placeholder/150/150'],
-      description: 'Broad spectrum antibiotic',
-      manufacturer: 'Cipla Ltd',
-      tags: ['Antibiotic', 'Infection', 'Prescription'],
-      isBestseller: false,
-      deliveryTime: '4-6 hours'
-    },
-    {
-      id: '4',
-      name: 'Cetaphil Gentle Cleanser',
-      genericName: 'Cleansing Lotion',
-      brand: 'Cetaphil',
-      strength: '250ml',
-      form: 'Liquid',
-      pack: '250ml bottle',
-      price: 599.00,
-      originalPrice: 650.00,
-      discount: 8,
-      inStock: true,
-      stockCount: 25,
-      requiresPrescription: false,
-      category: 'skincare',
-      rating: 4.5,
-      reviewsCount: 3421,
-      fastDelivery: true,
-      images: ['/api/placeholder/150/150'],
-      description: 'Gentle daily facial cleanser',
-      manufacturer: 'Galderma India',
-      tags: ['Skincare', 'Cleanser', 'Sensitive Skin'],
-      isBestseller: true,
-      deliveryTime: '2-4 hours'
-    },
-    {
-      id: '5',
-      name: 'Glucon-D Orange',
-      genericName: 'Glucose',
-      brand: 'Heinz',
-      strength: '1kg',
-      form: 'Powder',
-      pack: '1kg jar',
-      price: 285.00,
-      originalPrice: 320.00,
-      discount: 11,
-      inStock: true,
-      stockCount: 67,
-      requiresPrescription: false,
-      category: 'vitamins',
-      rating: 4.3,
-      reviewsCount: 1876,
-      fastDelivery: true,
-      images: ['/api/placeholder/150/150'],
-      description: 'Instant energy glucose drink',
-      manufacturer: 'Heinz India',
-      tags: ['Energy', 'Glucose', 'Sports'],
-      isBestseller: false,
-      deliveryTime: '1-2 days'
-    },
-    {
-      id: '6',
-      name: 'Baby Dove Soap',
-      genericName: 'Baby Soap',
-      brand: 'Dove',
-      strength: '75g',
-      form: 'Soap',
-      pack: 'Pack of 3 soaps',
-      price: 165.00,
-      originalPrice: 180.00,
-      discount: 8,
-      inStock: true,
-      stockCount: 120,
-      requiresPrescription: false,
-      category: 'baby-care',
-      rating: 4.7,
-      reviewsCount: 2156,
-      fastDelivery: true,
-      images: ['/api/placeholder/150/150'],
-      description: 'Gentle moisturizing baby soap',
-      manufacturer: 'Hindustan Unilever',
-      tags: ['Baby Care', 'Gentle', 'Moisturizing'],
-      isBestseller: true,
-      deliveryTime: '2-4 hours'
-    }
   ];
 
   // Brand list
@@ -237,6 +89,61 @@ const Pharmacy = () => {
     loadCartAndWishlist();
   }, [userData]);
 
+  // Load medicines from Firebase with pagination
+  useEffect(() => {
+    const loadMedicines = async () => {
+      setLoading(true);
+      try {
+        const result = await firestoreService.getProductsPaginated(lastDoc, itemsPerPage);
+        if (result.success) {
+          // Transform Firebase data to match expected format
+          const medicinesData = result.data.map(product => ({
+            id: product.id,
+            name: product.name,
+            genericName: product.genericName || '',
+            brand: product.manufacturer || product.brand || 'Unknown',
+            strength: product.strength || '',
+            form: product.form || '',
+            pack: product.pack || '',
+            price: product.price || 0,
+            originalPrice: product.originalPrice || product.price || 0,
+            discount: product.discount || 0,
+            inStock: product.inStock !== undefined ? product.inStock : true,
+            stockCount: product.stockCount || 0,
+            requiresPrescription: product.requiresPrescription || false,
+            category: product.category || 'general',
+            rating: product.rating || 4.0,
+            reviewsCount: product.reviewsCount || 0,
+            fastDelivery: product.fastDelivery || false,
+            isBestseller: product.isBestseller || false,
+            deliveryTime: product.deliveryTime || '2-4 hours',
+            imageURL: product.imageURL || product.image || ''
+          }));
+          
+          // If this is the first page, replace the medicines array
+          // Otherwise, append to the existing medicines array
+          if (!lastDoc) {
+            setMedicines(medicinesData);
+          } else {
+            setMedicines(prev => [...prev, ...medicinesData]);
+          }
+          
+          setLastDoc(result.lastDoc);
+          setHasMore(result.hasMore);
+        } else {
+          console.error('Failed to load medicines from Firebase:', result.error);
+          // You might want to show an error message to the user here
+        }
+      } catch (error) {
+        console.error('Error loading medicines:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMedicines();
+  }, [lastDoc]);
+
   // Save cart to Firebase
   const saveCartToFirebase = async (cartData) => {
     if (userData?.uid) {
@@ -256,6 +163,14 @@ const Pharmacy = () => {
         console.error('Error saving wishlist to Firebase:', result.error);
         toast.error('Failed to save wishlist. Please try again.');
       }
+    }
+  };
+
+  // Function to load more medicines (pagination)
+  const loadMoreMedicines = () => {
+    if (hasMore && !loading) {
+      setCurrentPage(prev => prev + 1);
+      // The useEffect will automatically trigger when lastDoc changes
     }
   };
 
@@ -288,6 +203,9 @@ const Pharmacy = () => {
       default: return b.reviewsCount - a.reviewsCount; // popular
     }
   });
+
+  // Paginated medicines for display
+  const paginatedMedicines = sortedMedicines.slice(0, currentPage * itemsPerPage);
 
   const addToCart = async (medicine) => {
     const newCart = (() => {
@@ -569,7 +487,7 @@ const Pharmacy = () => {
       {/* Results count */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-600">
-          Showing {sortedMedicines.length} results
+          Showing {paginatedMedicines.length} of {sortedMedicines.length} results
           {selectedCategory !== 'all' && (
             <span> in {categories.find(c => c.id === selectedCategory)?.name}</span>
           )}
@@ -582,7 +500,7 @@ const Pharmacy = () => {
           ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
           : 'grid-cols-1'
       }`}>
-        {sortedMedicines.map(medicine => (
+        {paginatedMedicines.map(medicine => (
           <div 
             key={medicine.id} 
             className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden ${
@@ -591,7 +509,19 @@ const Pharmacy = () => {
           >
             {/* Product Image */}
             <div className={`relative ${viewMode === 'list' ? 'w-32 h-32' : 'w-full h-48'} bg-gray-100 flex items-center justify-center`}>
-              <Package className="w-12 h-12 text-gray-400" />
+              {medicine.imageURL ? (
+                <img 
+                  src={medicine.imageURL} 
+                  alt={medicine.name} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.parentNode.innerHTML = '<Package className="w-12 h-12 text-gray-400" />';
+                  }}
+                />
+              ) : (
+                <Package className="w-12 h-12 text-gray-400" />
+              )}
               
               {/* Badges */}
               <div className="absolute top-2 left-2 flex flex-col space-y-1">
@@ -688,6 +618,26 @@ const Pharmacy = () => {
           </div>
         ))}
       </div>
+
+      {/* Load More Button */}
+      {hasMore && sortedMedicines.length > paginatedMedicines.length && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={loadMoreMedicines}
+            disabled={loading}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
+
+      {/* Loading indicator at bottom */}
+      {loading && paginatedMedicines.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        </div>
+      )}
 
       {/* Empty State */}
       {sortedMedicines.length === 0 && (

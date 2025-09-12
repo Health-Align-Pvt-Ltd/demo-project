@@ -10,7 +10,9 @@ import {
   setDoc, 
   query, 
   where, 
-  orderBy
+  orderBy,
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -1086,5 +1088,288 @@ export const firestoreService = {
       console.error('Error initializing collections:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // Paginated Products operations
+  async getProductsPaginated(lastDoc = null, pageSize = 20) {
+    try {
+      let q = query(
+        collection(db, 'products'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const products = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: products,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting products:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Paginated Product Categories operations
+  async getProductCategoriesPaginated(lastDoc = null, pageSize = 20) {
+    try {
+      let q = query(
+        collection(db, 'productCategories'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const categories = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: categories,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting product categories:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Paginated Diseases operations
+  async getDiseasesPaginated(lastDoc = null, pageSize = 20) {
+    try {
+      let q = query(
+        collection(db, 'diseases'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const diseases = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: diseases,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting diseases:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Paginated Pharmacy operations
+  async getPharmaciesPaginated(lastDoc = null, pageSize = 20) {
+    try {
+      let q = query(
+        collection(db, 'pharmacy'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const pharmacies = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: pharmacies,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting pharmacies:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Paginated Ambulance operations
+  async getAmbulancesPaginated(lastDoc = null, pageSize = 20) {
+    try {
+      let q = query(
+        collection(db, 'ambulance'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const ambulances = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: ambulances,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting ambulances:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Paginated Users operations
+  async getUsersPaginated(lastDoc = null, pageSize = 20, action = 'all') {
+    try {
+      // Create base query
+      let baseQuery = collection(db, 'users');
+      
+      // Simple query - just get all users ordered by document ID to avoid field-related issues
+      let q = query(
+        baseQuery,
+        orderBy('__name__', 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      
+      // Process users data to handle inconsistent field types
+      const users = snapshot.docs.map(doc => {
+        const data = doc.data();
+        
+        // Normalize user data to handle inconsistent fields
+        const normalizedData = {
+          id: doc.id,
+          ...data
+        };
+        
+        // Handle name field variations
+        if (!normalizedData.name && data.Name) normalizedData.name = data.Name;
+        if (!normalizedData.name && data.fullname) normalizedData.name = data.fullname;
+        if (!normalizedData.name) normalizedData.name = 'N/A';
+        
+        // Handle email field variations
+        if (!normalizedData.email && data.Email) normalizedData.email = data.Email;
+        if (!normalizedData.email) normalizedData.email = data.email || 'N/A';
+        
+        // Handle phone field variations
+        if (!normalizedData.phoneNumber && data.phone) normalizedData.phoneNumber = data.phone;
+        if (!normalizedData.phoneNumber && data.Phone) normalizedData.phoneNumber = data.Phone;
+        if (!normalizedData.phoneNumber) normalizedData.phoneNumber = data.phoneNumber || 'N/A';
+        
+        // Handle user type variations
+        if (!normalizedData.userType && data.UserType) normalizedData.userType = data.UserType;
+        if (!normalizedData.userType) normalizedData.userType = data.userType || 'patient';
+        
+        // Handle date of birth variations
+        if (!normalizedData.dateOfBirth && data.date) normalizedData.dateOfBirth = data.date;
+        if (!normalizedData.dateOfBirth && data.Date) normalizedData.dateOfBirth = data.Date;
+        if (!normalizedData.dateOfBirth) normalizedData.dateOfBirth = 'N/A';
+        
+        // Handle gender variations
+        if (!normalizedData.gender && data.Gender) normalizedData.gender = data.Gender;
+        if (!normalizedData.gender) normalizedData.gender = data.gender || 'N/A';
+        
+        // Handle status variations
+        if (!normalizedData.status && data.Status) normalizedData.status = data.Status;
+        if (!normalizedData.status && data.isActive !== undefined) {
+          normalizedData.status = data.isActive ? 'Active' : 'Inactive';
+        }
+        if (!normalizedData.status) normalizedData.status = data.status || 'Active';
+        
+        // Handle creation date variations
+        if (!normalizedData.createdAt && data.created_at) normalizedData.createdAt = data.created_at;
+        if (!normalizedData.createdAt && data.CreatedAt) normalizedData.createdAt = data.CreatedAt;
+        if (!normalizedData.createdAt && data.time) normalizedData.createdAt = data.time;
+        if (!normalizedData.createdAt) normalizedData.createdAt = data.createdAt || null;
+        
+        // Handle last login variations
+        if (!normalizedData.lastLoginAt && data.last_login) normalizedData.lastLoginAt = data.last_login;
+        if (!normalizedData.lastLoginAt && data.LastLogin) normalizedData.lastLoginAt = data.LastLogin;
+        if (!normalizedData.lastLoginAt) normalizedData.lastLoginAt = data.lastLoginAt || null;
+        
+        // Handle verification status variations
+        if (normalizedData.isVerified === undefined && data.verified !== undefined) {
+          normalizedData.isVerified = (data.verified === 'Yes' || data.verified === true);
+        }
+        if (normalizedData.isVerified === undefined) normalizedData.isVerified = data.isVerified !== undefined ? data.isVerified : true;
+        
+        return normalizedData;
+      });
+      
+      return { 
+        success: true, 
+        data: users,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error('Error getting users:', error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
+  },
+
+  // Generic paginated read function
+  async readPaginated(collectionName, lastDoc = null, pageSize = 20, orderByField = 'createdAt') {
+    try {
+      let q = query(
+        collection(db, collectionName),
+        orderBy(orderByField, 'desc'),
+        limit(pageSize)
+      );
+      
+      if (lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+      
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { 
+        success: true, 
+        data: data,
+        lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null,
+        hasMore: snapshot.docs.length === pageSize
+      };
+    } catch (error) {
+      console.error(`Error getting ${collectionName}:`, error);
+      return { success: false, error: error.message, data: [], lastDoc: null, hasMore: false };
+    }
   }
 };
+
+export default firestoreService;

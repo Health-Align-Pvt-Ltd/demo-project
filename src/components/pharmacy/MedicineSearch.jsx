@@ -46,9 +46,15 @@ const MedicineSearch = () => {
     inStock: true,
     discount: false
   });
+  const [allMedicines, setAllMedicines] = useState([]); // State to hold medicines from Firebase
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const itemsPerPage = 20;
 
-  // Sample medicines data
-  const allMedicines = [
+  // Sample medicines data (fallback if Firebase fails)
+  const sampleMedicines = [
     {
       id: '1',
       name: 'Dolo 650 Tablet',
@@ -196,6 +202,70 @@ const MedicineSearch = () => {
     }
   }, [location.search, userData]);
 
+  // Load medicines from Firebase with pagination
+  useEffect(() => {
+    const loadMedicines = async () => {
+      setLoading(true);
+      try {
+        const result = await firestoreService.getProductsPaginated(lastDoc, itemsPerPage);
+        if (result.success) {
+          // Transform Firebase data to match expected format
+          const medicines = result.data.map(product => ({
+            id: product.id,
+            name: product.name,
+            genericName: product.genericName || '',
+            brand: product.manufacturer || product.brand || 'Unknown',
+            strength: product.strength || '',
+            form: product.form || '',
+            pack: product.pack || '',
+            price: product.price || 0,
+            originalPrice: product.originalPrice || product.price || 0,
+            discount: product.discount || 0,
+            inStock: product.inStock !== undefined ? product.inStock : true,
+            stockCount: product.stockCount || 0,
+            requiresPrescription: product.requiresPrescription || false,
+            category: product.category || 'general',
+            rating: product.rating || 4.0,
+            reviewsCount: product.reviewsCount || 0,
+            fastDelivery: product.fastDelivery || false,
+            isBestseller: product.isBestseller || false,
+            keywords: product.keywords || [],
+            imageURL: product.imageURL || product.image || ''
+          }));
+          
+          // If this is the first page, replace the medicines array
+          // Otherwise, append to the existing medicines array
+          if (!lastDoc) {
+            setAllMedicines(medicines);
+          } else {
+            setAllMedicines(prev => [...prev, ...medicines]);
+          }
+          
+          setLastDoc(result.lastDoc);
+          setHasMore(result.hasMore);
+        } else {
+          // Fallback to sample data if Firebase fails
+          console.warn('Failed to load medicines from Firebase, using sample data');
+          if (!lastDoc) {
+            setAllMedicines(sampleMedicines);
+          }
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error('Error loading medicines:', error);
+        // Fallback to sample data if Firebase fails
+        if (!lastDoc) {
+          setAllMedicines(sampleMedicines);
+        }
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMedicines();
+  }, [lastDoc]);
+
   const performSearch = (query) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -225,6 +295,7 @@ const MedicineSearch = () => {
 
       setSearchResults(results);
       setIsSearching(false);
+      setCurrentPage(1); // Reset to first page when performing a new search
 
       // Save to recent searches
       saveRecentSearch(query);
@@ -349,6 +420,17 @@ const MedicineSearch = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
+  // Function to load more medicines (pagination)
+  const loadMoreMedicines = () => {
+    if (hasMore && !loading) {
+      setCurrentPage(prev => prev + 1);
+      // The useEffect will automatically trigger when lastDoc changes
+    }
+  };
+
+  // Paginated search results for display
+  const paginatedSearchResults = searchResults.slice(0, currentPage * itemsPerPage);
+
   return (
     <PageLayout 
       title="Search Medicines"
@@ -472,7 +554,7 @@ const MedicineSearch = () => {
                 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
                 : 'grid-cols-1'
             }`}>
-              {searchResults.map(medicine => (
+              {paginatedSearchResults.map(medicine => (
                 <div 
                   key={medicine.id} 
                   className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden ${
@@ -481,7 +563,19 @@ const MedicineSearch = () => {
                 >
                   {/* Product Image */}
                   <div className={`relative ${viewMode === 'list' ? 'w-32 h-32' : 'w-full h-48'} bg-gray-100 flex items-center justify-center`}>
-                    <Package className="w-12 h-12 text-gray-400" />
+                    {medicine.imageURL ? (
+                      <img 
+                        src={medicine.imageURL} 
+                        alt={medicine.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.parentNode.innerHTML = '<Package className="w-12 h-12 text-gray-400" />';
+                        }}
+                      />
+                    ) : (
+                      <Package className="w-12 h-12 text-gray-400" />
+                    )}
                     
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex flex-col space-y-1">
@@ -563,6 +657,18 @@ const MedicineSearch = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Load More Button for Search Results */}
+          {searchResults.length > paginatedSearchResults.length && (
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Load More
+              </button>
             </div>
           )}
 
@@ -649,6 +755,26 @@ const MedicineSearch = () => {
               ))}
             </div>
           </div>
+
+          {/* Load More Button for All Medicines */}
+          {hasMore && (
+            <div className="flex justify-center">
+              <button
+                onClick={loadMoreMedicines}
+                disabled={loading}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? 'Loading...' : 'Load More Medicines'}
+              </button>
+            </div>
+          )}
+
+          {/* Loading indicator */}
+          {loading && allMedicines.length > 0 && (
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          )}
 
           {/* Search Tips */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">

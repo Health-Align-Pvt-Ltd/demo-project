@@ -36,11 +36,39 @@ export const canAccessAdmin = (user, userData) => {
  */
 export const formatAdminDate = (date) => {
   if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
+  
+  try {
+    // Handle different date formats
+    let parsedDate;
+    
+    // If it's already a valid date string
+    if (typeof date === 'string' && !isNaN(Date.parse(date))) {
+      parsedDate = new Date(date);
+    } 
+    // Handle DD-MM-YYYY format
+    else if (typeof date === 'string' && date.match(/^\d{2}-\d{2}-\d{4}/)) {
+      const parts = date.split('-');
+      parsedDate = new Date(parts[2], parts[1] - 1, parts[0]); // YYYY-MM-DD
+    } 
+    // Handle other cases
+    else {
+      parsedDate = new Date(date);
+    }
+    
+    // Check if date is valid
+    if (isNaN(parsedDate.getTime())) {
+      return 'N/A';
+    }
+    
+    return parsedDate.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', date, error);
+    return 'N/A';
+  }
 };
 
 /**

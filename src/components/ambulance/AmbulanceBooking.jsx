@@ -8,6 +8,7 @@ import L from 'leaflet';
 import Cookies from 'js-cookie';
 import PageLayout from '../common/PageLayout';
 import MapLocationPicker from '../common/MapLocationPicker';
+import { makeProxiedRequest } from '../../services/proxyService';
 import { 
   ArrowLeft, 
   Truck, 
@@ -334,7 +335,8 @@ const AmbulanceBooking = () => {
   // Reverse geocoding using OpenStreetMap Nominatim API
   const reverseGeocode = async (lat, lng) => {
     try {
-      const response = await fetch(
+      // Use proxy service for external API calls
+      const response = await makeProxiedRequest(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
       );
       const data = await response.json();
@@ -380,16 +382,20 @@ const AmbulanceBooking = () => {
         out center meta;
       `;
       
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
+      // Use proxy service for external API calls
+      const response = await makeProxiedRequest('https://overpass-api.de/api/interpreter', {
         method: 'POST',
-        body: overpassQuery
+        body: overpassQuery,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
       
       const data = await response.json();
       
       const hospitals = data.elements.map(element => {
         const lat = element.lat || element.center?.lat;
-        const lng = element.lon || element.center?.lon;
+        const lng = element.lon || element.center?.lng;
         const name = element.tags?.name || 'Unknown Hospital';
         const phone = element.tags?.phone || 'Not available';
         const address = element.tags?.['addr:full'] || 'Address not available';
