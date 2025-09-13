@@ -1,7 +1,0 @@
-{
-  "name": "health-align",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "custom"
-}

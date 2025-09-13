@@ -1,0 +1,58 @@
+{
+  "name": "@health-align/main",
+  "version": "1.0.0",
+  "description": "Main application for Health Align that combines all functionality",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "health-align",
+    "main"
+  ],
+  "author": "Health Align Team",
+  "license": "MIT",
+  "dependencies": {
+    "@health-align/shared": "file:../../packages/shared",
+    "@health-align/admin": "file:../admin",
+    "@health-align/pharmacy": "file:../pharmacy",
+    "@health-align/lab": "file:../lab",
+    "@health-align/user": "file:../user",
+    "@health-align/regional-admin": "file:../regional-admin",
+    "@health-align/hospital-admin": "file:../hospital-admin",
+    "@health-align/hospital-staff": "file:../hospital-staff",
+    "@health-align/hospital-accountant": "file:../hospital-accountant",
+    "@health-align/hospital-pharmacy": "file:../hospital-pharmacy",
+    "@health-align/hospital-lab": "file:../hospital-lab",
+    "@health-align/hospital-support": "file:../hospital-support",
+    "@health-align/clinic-admin": "file:../clinic-admin",
+    "@health-align/clinic-staff": "file:../clinic-staff",
+    "@health-align/clinic-accountant": "file:../clinic-accountant",
+    "@health-align/pharmacy-admin": "file:../pharmacy-admin",
+    "@health-align/pharmacy-staff": "file:../pharmacy-staff",
+    "@health-align/pharmacy-accountant": "file:../pharmacy-accountant",
+    "@health-align/doctor-admin": "file:../doctor-admin",
+    "@health-align/doctor": "file:../doctor",
+    "@health-align/doctor-assistant": "file:../doctor-assistant",
+    "@health-align/lab-admin": "file:../lab-admin",
+    "@health-align/lab-staff": "file:../lab-staff",
+    "@health-align/lab-technician": "file:../lab-technician",
+    "@health-align/lab-accountant": "file:../lab-accountant",
+    "@health-align/delivery-admin": "file:../delivery-admin",
+    "@health-align/delivery-agent": "file:../delivery-agent",
+    "@health-align/super-admin": "file:../super-admin",
+    "@health-align/accountant": "file:../accountant",
+    "@health-align/ca": "file:../ca",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.5",
+    "lucide-react": "^0.468.0",
+    "react-hot-toast": "^2.4.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.1.0"
+  }
+}

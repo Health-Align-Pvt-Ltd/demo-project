@@ -1,149 +1,99 @@
-# HealthAlign - Complete Healthcare Solution
+# Health Align - Multi-App Platform
 
-🏥 A comprehensive mobile-first healthcare application built with React, Firebase, and modern web technologies.
-
-## Features
-
-### 🩺 Doctor Consultation
-- Browse doctors by specialty
-- Book video consultations and chat sessions
-- View doctor profiles with ratings and experience
-- Manage appointment history
-- Real-time appointment scheduling
-
-### 🚑 Emergency Ambulance
-- Request emergency ambulance services
-- Real-time ambulance tracking
-- Priority-based booking (Critical, High, Medium, Low)
-- Emergency contact integration
-- Location-based ambulance dispatch
-
-### 🩸 Blood Request & Donation
-- Create urgent blood requests
-- Register as a blood donor
-- Browse active blood requests by type and location
-- Connect donors with recipients
-- Emergency blood request notifications
-
-### 💊 Medicine Ordering
-- Browse medicine catalog
-- Upload prescription images
-- Order medicines with doorstep delivery
-- Track order status and delivery
-- Pharmacy integration
-
-### 👤 Profile Management
-- Comprehensive user profiles
-- Medical history tracking
-- Emergency contacts
-- Prescription management
-- Privacy and security settings
-
-### 📱 Progressive Web App (PWA)
-- Install as mobile app
-- Offline functionality
-- Push notifications
-- App shortcuts for emergency services
-- Cross-platform compatibility
-
-## Technology Stack
-
-- **Frontend**: React 19, Vite, Tailwind CSS
-- **Backend**: Firebase (Authentication, Firestore, Storage)
-- **Routing**: React Router DOM
-- **UI Components**: Lucide React Icons
-- **Notifications**: React Hot Toast
-- **PWA**: Service Worker, Web App Manifest
-- **State Management**: React Context API
-
-## Quick Start
-
-### Prerequisites
-- Node.js 18+ and npm
-- Firebase account
-- Modern web browser
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/health-align.git
-   cd health-align
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure Firebase**
-   - Follow the detailed guide in [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
-   - Update `src/firebase/config.js` with your Firebase configuration
-
-4. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open in browser**
-   Navigate to `http://localhost:5173`
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
+This is a collection of specialized applications for different user roles in the Health Align platform, all connected to a single Firebase backend.
 
 ## Project Structure
 
 ```
-src/
-├── components/
-│   ├── auth/               # Authentication components
-│   ├── dashboard/          # Main dashboard
-│   ├── consultation/       # Doctor consultation
-│   ├── ambulance/          # Emergency ambulance
-│   ├── blood/              # Blood request system
-│   ├── medicine/           # Medicine ordering
-│   ├── profile/            # User profile
-│   └── pwa/                # PWA components
-├── contexts/               # React contexts
-├── firebase/               # Firebase configuration
-└── App.jsx                 # Main app component
+health-align/
+├── apps/                    # Individual applications
+│   ├── admin/              # Admin application
+│   ├── regional-admin/     # Regional Admin application
+│   ├── hospital-admin/     # Hospital Admin application
+│   ├── hospital-staff/     # Hospital Staff application
+│   ├── hospital-accountant/ # Hospital Accountant application
+│   ├── hospital-pharmacy/  # Hospital Pharmacy application
+│   ├── hospital-lab/       # Hospital Lab application
+│   ├── hospital-support/   # Hospital Support application
+│   ├── clinic-admin/       # Clinic Admin application
+│   ├── clinic-staff/       # Clinic Staff application
+│   ├── clinic-accountant/  # Clinic Accountant application
+│   ├── pharmacy-admin/     # Pharmacy Admin application
+│   ├── pharmacy-staff/     # Pharmacy Staff application
+│   ├── pharmacy-accountant/ # Pharmacy Accountant application
+│   ├── doctor-admin/       # Doctor Admin application
+│   ├── doctor/             # Doctor application
+│   ├── doctor-assistant/   # Doctor Assistant application
+│   ├── lab-admin/          # Lab Admin application
+│   ├── lab-staff/          # Lab Staff application
+│   ├── lab-technician/     # Lab Technician application
+│   ├── lab-accountant/     # Lab Accountant application
+│   ├── delivery-admin/     # Delivery Admin application
+│   ├── delivery-agent/     # Delivery Agent application
+│   ├── super-admin/        # Super Admin application
+│   ├── accountant/         # Accountant application
+│   ├── ca/                 # Charted Accountant application
+│   ├── user/               # User application
+│   └── main/               # Main application that combines all routes
+└── ...
 ```
 
-## Firebase Collections
+## Available Scripts
 
-The app uses the following Firestore collections:
+In the project directory, you can run:
 
-- **users**: User profiles and medical information
-- **doctors**: Doctor profiles and availability
-- **appointments**: Medical appointments
-- **bloodRequests**: Blood donation requests
-- **bloodDonors**: Blood donor profiles
-- **medicineOrders**: Medicine orders and prescriptions
-- **ambulanceRequests**: Emergency ambulance requests
+### `npm run dev`
 
-## PWA Features
+Runs all applications in development mode concurrently.
 
-- **Installable**: Can be installed as a native app
-- **Offline Support**: Basic offline functionality
-- **App Shortcuts**: Quick access to emergency services
-- **Push Notifications**: Real-time updates (when configured)
-- **Responsive**: Works on desktop, tablet, and mobile
+### `npm run dev:admin`
 
-## License
+Runs the Admin application in development mode on port 3000.
 
-This project is licensed under the MIT License.
+(And so on for all individual apps)
 
-## Support
+### `npm run build`
 
-For support and questions:
-- Create an issue on GitHub
-- Check the [Firebase Setup Guide](./FIREBASE_SETUP.md)
-- Review the documentation
+Builds all applications for production.
 
----
+### `npm run build:admin`
 
-**Note**: This is a demo application for educational purposes. For production use, implement proper security measures, medical compliance (HIPAA), and thorough testing.
+Builds the Admin application for production.
+
+(And so on for all individual apps)
+
+## Core Functionality
+
+Each application contains its own core functionality in the `src/core` directory:
+
+### Firebase Services
+- Authentication service
+- Firestore service
+
+### UI Components
+- Button
+- Input
+- Card
+- Modal
+
+## Development
+
+Each application is designed to be worked on independently by different developers. They all contain their own core functionality.
+
+To work on a specific application:
+1. Navigate to the app directory: `cd apps/[app-name]`
+2. Run the development server: `npm run dev`
+
+## Routing
+
+Each application has its own routing configuration in its `App.jsx` file.
+
+## Fresh Developer Friendly
+
+Each application is structured to be easily understood by new developers:
+- Consistent folder structure across all apps
+- All core functionality is contained within each app
+- Clear separation of concerns
+- Well-documented code
+- Consistent naming conventions
+- Each app contains all its required files locally and can run independently
